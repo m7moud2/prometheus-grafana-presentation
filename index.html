@@ -1069,29 +1069,47 @@ app.get(<span class="cv">'/metrics'</span>, <span class="cf">async</span> (req, 
     <div>
       <div class="abox" style="margin-bottom:12px">
         <div class="ah">Q: إيه الفرق بين Monitoring وObservability؟</div>
-        Monitoring = تشوف حاجات عارفها مسبقاً (metrics). Observability = تفهم أي مشكلة حتى لو مش متوقعاها (metrics + logs + traces). Prometheus = Monitoring. Jaeger/Zipkin = Tracing.
+        <div class="bilang" style="grid-template-columns:1fr;gap:8px">
+          <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>Monitoring = تشوف حاجات عارفها مسبقاً (metrics). Observability = تفهم أي مشكلة حتى لو مش متوقعاها (metrics + logs + traces). Prometheus = Monitoring. Jaeger/Zipkin = Tracing.</div>
+          <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>Monitoring = checking known metrics. Observability = understanding the unknown (metrics + logs + traces). Prometheus is for Monitoring, Jaeger/Zipkin for Tracing.</div>
+        </div>
       </div>
       <div class="abox" style="margin-bottom:12px">
         <div class="ah">Q: إيه الـ scrape interval المناسب؟</div>
-        15 ثانية standard. لو عندك حاجة critical ممكن 5 ثواني. مش أقل من كده — هيرهق Prometheus والتطبيق.
+        <div class="bilang" style="grid-template-columns:1fr;gap:8px">
+          <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>15 ثانية standard. لو عندك حاجة critical ممكن 5 ثواني. مش أقل من كده — هيرهق Prometheus والتطبيق.</div>
+          <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>15 seconds is the standard. For critical services, maybe 5s. Never go lower than that as it will overload both Prometheus and your app.</div>
+        </div>
       </div>
       <div class="abox">
         <div class="ah">Q: إزاي تتعامل مع الـ Prometheus في Production؟</div>
-        Thanos لـ long-term storage + HA. Mimir كبديل. استخدم Helm charts لـ Kubernetes. احتفظ بـ backup للـ rules والـ dashboards.
+        <div class="bilang" style="grid-template-columns:1fr;gap:8px">
+          <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>Thanos لـ long-term storage + HA. Mimir كبديل. استخدم Helm charts لـ Kubernetes. احتفظ بـ backup للـ rules والـ dashboards.</div>
+          <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>Use Thanos for long-term storage and High Availability (HA), or Mimir. Deploy using Helm charts on Kubernetes. Keep backups of rules and dashboards.</div>
+        </div>
       </div>
     </div>
     <div>
       <div class="abox" style="margin-bottom:12px">
         <div class="ah">Q: إيه الـ cardinality وليه خطرة؟</div>
-        عدد الـ unique time series. كل label value جديدة = time series جديدة. label كـ user_id مع مليون user = مليون time series → Prometheus هيتعب.
+        <div class="bilang" style="grid-template-columns:1fr;gap:8px">
+          <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>عدد الـ unique time series. كل label value جديدة = time series جديدة. label كـ user_id مع مليون user = مليون time series → Prometheus هيتعب.</div>
+          <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>The number of unique time series. Each new label value creates a new time series. A user_id label with 1M users = 1M time series, which crashes Prometheus.</div>
+        </div>
       </div>
       <div class="abox" style="margin-bottom:12px">
         <div class="ah">Q: إيه الفرق بين Histogram وSummary؟</div>
-        Histogram: buckets محددة مسبقاً، تحسب percentiles في Grafana. Summary: يحسب quantiles على الـ client، مش ممكن تعمل aggregation بين instances.
+        <div class="bilang" style="grid-template-columns:1fr;gap:8px">
+          <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>Histogram: buckets محددة مسبقاً، تحسب percentiles في Grafana. Summary: يحسب quantiles على الـ client، مش ممكن تعمل aggregation بين instances.</div>
+          <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>Histogram uses pre-defined buckets and percentiles are calculated in Grafana. Summary calculates quantiles on the client, so you can't aggregate them across instances.</div>
+        </div>
       </div>
       <div class="abox">
         <div class="ah">Q: ليه pull model أحسن من push؟</div>
-        لأن Prometheus هو اللي بيتحكم في timing. لو التطبيق وقع — فوراً بتعرف. لو push — مش هتعرف الفرق بين "وقع" و"مش بيبعت بيانات".
+        <div class="bilang" style="grid-template-columns:1fr;gap:8px">
+          <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>لأن Prometheus هو اللي بيتحكم في timing. لو التطبيق وقع — فوراً بتعرف. لو push — مش هتعرف الفرق بين "وقع" و"مش بيبعت بيانات".</div>
+          <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>Prometheus controls the timing. If the app crashes, you instantly know because it fails to scrape. With push, you can't easily tell if it crashed or just isn't sending data.</div>
+        </div>
       </div>
     </div>
   </div>
