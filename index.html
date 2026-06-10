@@ -197,6 +197,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   #s1 .sub{font-size:13px;margin-bottom:24px}
   .g2,.g3,.g4{grid-template-columns:1fr!important;gap:10px}
   .dlay{grid-template-columns:1fr;gap:14px}
+  .g2 > div, .g3 > div, .g4 > div, .dlay > div { min-width: 0; }
   .flow{flex-direction:column;gap:8px}
   .farr{transform:rotate(90deg);padding:2px 0;font-size:18px}
   .arch{grid-template-columns:1fr;gap:8px}
@@ -397,7 +398,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
       <div class="card" style="padding:20px;margin-bottom:12px">
         <div class="tb" style="background:var(--graf2)"></div>
         <h3 style="color:var(--graf2);margin-bottom:14px;font-size:15px">🖼️ أنواع الـ Panels</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;font-size:12px">
+        <div class="g2" style="gap:9px;font-size:12px;width:100%;max-width:none">
           <div style="background:var(--s2);border-radius:9px;padding:10px;color:var(--mut)">📊 <strong style="color:var(--text)">Time Series</strong><br>CPU على مدى ساعة</div>
           <div style="background:var(--s2);border-radius:9px;padding:10px;color:var(--mut)">🥧 <strong style="color:var(--text)">Pie Chart</strong><br>توزيع الـ requests</div>
           <div style="background:var(--s2);border-radius:9px;padding:10px;color:var(--mut)">🔢 <strong style="color:var(--text)">Stat</strong><br>إجمالي الطلبات</div>
@@ -850,7 +851,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <div class="blob" style="width:400px;height:400px;background:var(--acc2);top:-100px;right:-80px"></div>
   <h2 class="stitle">🛠️ Setup كامل بـ Docker Compose</h2>
   <div class="sline" style="width:70px;background:var(--acc2)"></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;width:100%;max-width:940px">
+  <div class="dlay" style="gap:18px">
     <div class="code" style="font-size:11px">
 <span class="cc"># docker-compose.yml</span><br>
 <span class="ck">services:</span><br>
