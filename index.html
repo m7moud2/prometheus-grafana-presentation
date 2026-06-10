@@ -1,611 +1,953 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Prometheus & Grafana — شرح مفصّل</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Prometheus & Grafana — شرح موسّع</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#07090f;
-  --surface:#0f1623;
-  --surface2:#151e2e;
-  --surface3:#1c2840;
+  --bg:#07090f;--s1:#0f1623;--s2:#151e2e;--s3:#1c2840;
   --border:rgba(99,179,237,.13);
-  --prom:#e6522c;--prom2:#ff7c52;--prom3:rgba(230,82,44,.12);
-  --graf:#f5a623;--graf2:#ffc94a;--graf3:rgba(245,166,35,.12);
-  --accent:#63b3ed;--accent2:#9f7aea;--accent3:#68d391;
-  --red:#fc8181;--yellow:#f6e05e;--green:#68d391;
-  --text:#e2e8f0;--muted:#718096;--muted2:#4a5568;
+  --prom:#e6522c;--prom2:#ff7c52;
+  --graf:#f5a623;--graf2:#ffc94a;
+  --acc:#63b3ed;--acc2:#9f7aea;--acc3:#68d391;
+  --red:#fc8181;--yel:#f6e05e;--grn:#68d391;
+  --text:#e2e8f0;--mut:#718096;--mut2:#4a5568;
 }
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Cairo',sans-serif;color:var(--text)}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 20%,rgba(230,82,44,.04) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(245,166,35,.04) 0%,transparent 50%);pointer-events:none;z-index:0}
 
 /* ── PROGRESS ── */
-#prog{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--prom),var(--accent),var(--graf));width:0%;transition:width .5s ease;z-index:200}
+#prog{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--prom),var(--acc),var(--graf));width:0%;transition:width .4s ease;z-index:300}
 
 /* ── NAV ── */
-.nav-btn{position:fixed;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);width:44px;height:44px;border-radius:50%;font-size:22px;cursor:pointer;z-index:200;transition:all .3s;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
-.nav-btn:hover{background:rgba(99,179,237,.15);border-color:var(--accent)}
-#btn-prev{right:20px}#btn-next{left:20px}
+.nav-btn{position:fixed;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);width:44px;height:44px;border-radius:50%;font-size:22px;cursor:pointer;z-index:300;transition:all .3s;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.nav-btn:hover{background:rgba(99,179,237,.15);border-color:var(--acc)}
+#btn-prev{right:16px}#btn-next{left:16px}
 
 /* ── DOTS ── */
-#dots{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:200}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--muted2);transition:all .3s;cursor:pointer}
-.dot.active{background:var(--accent);width:22px;border-radius:4px}
+#dots{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:300;flex-wrap:wrap;justify-content:center;max-width:90vw}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--mut2);transition:all .3s;cursor:pointer;flex-shrink:0}
+.dot.active{background:var(--acc);width:20px;border-radius:3px}
 
-/* ── KB HINT ── */
-#kb{position:fixed;bottom:38px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted2);font-family:'JetBrains Mono',monospace;letter-spacing:1px}
+/* ── SLIDE NUM BADGE ── */
+#slide-badge{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:rgba(15,22,35,.8);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:11px;color:var(--mut);font-family:'JetBrains Mono',monospace;letter-spacing:1px;z-index:300;backdrop-filter:blur(8px)}
+
+/* ── KB ── */
+#kb{position:fixed;bottom:36px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--mut2);font-family:'JetBrains Mono',monospace;letter-spacing:1px;z-index:200}
 
 /* ── SLIDES ── */
-#wrap{width:100%;height:100%;position:relative;overflow:hidden}
-.slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 72px;opacity:0;transform:translateX(-60px);transition:opacity .55s ease,transform .55s ease;pointer-events:none}
+#wrap{width:100%;height:100%;position:relative;overflow:hidden;z-index:1}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:52px 72px 56px;opacity:0;transform:translateX(-60px);transition:opacity .5s ease,transform .5s ease;pointer-events:none}
 .slide.active{opacity:1;transform:translateX(0);pointer-events:all}
 .slide.exit{opacity:0;transform:translateX(60px)}
 
 /* ── BLOBS ── */
-.blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.1;pointer-events:none}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;animation:bpulse 6s ease-in-out infinite}
+@keyframes bpulse{0%,100%{opacity:.08}50%{opacity:.14}}
 
-/* ── SLIDE HEADER ── */
-.snum{position:absolute;top:28px;right:36px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:2px}
-.stitle{font-size:clamp(22px,3.2vw,40px);font-weight:900;text-align:center;margin-bottom:6px;line-height:1.2}
-.sline{height:3px;border-radius:2px;margin:0 auto 32px;transition:width .5s}
-
-/* ── BADGE ── */
-.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(99,179,237,.08);border:1px solid rgba(99,179,237,.25);border-radius:100px;padding:7px 18px;font-size:12px;color:var(--accent);margin-bottom:28px;letter-spacing:1px}
+/* ── HEADERS ── */
+.stitle{font-size:clamp(20px,3vw,38px);font-weight:900;text-align:center;margin-bottom:6px;line-height:1.2}
+.sline{height:3px;border-radius:2px;margin:0 auto 26px}
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(99,179,237,.08);border:1px solid rgba(99,179,237,.25);border-radius:100px;padding:6px 18px;font-size:12px;color:var(--acc);margin-bottom:24px;letter-spacing:1px}
 
 /* ── COVER ── */
 #s1{text-align:center}
-#s1 h1{font-size:clamp(38px,6vw,74px);font-weight:900;line-height:1.1;margin-bottom:18px}
-#s1 .sub{font-size:clamp(15px,2.2vw,20px);color:var(--muted);max-width:580px;margin:0 auto 40px;font-weight:300;line-height:1.8}
-.tags{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
-.tag{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 16px;font-size:13px;font-family:'JetBrains Mono',monospace;color:var(--muted)}
+#s1 h1{font-size:clamp(34px,6vw,70px);font-weight:900;line-height:1.1;margin-bottom:16px}
+#s1 .sub{font-size:clamp(14px,2vw,19px);color:var(--mut);max-width:560px;margin:0 auto 36px;font-weight:300;line-height:1.85}
+.tags{display:flex;flex-wrap:wrap;gap:9px;justify-content:center}
+.tag{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--mut)}
 
-/* ── CARDS GRID ── */
-.cards2{display:grid;grid-template-columns:1fr 1fr;gap:22px;width:100%;max-width:880px}
-.cards3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;width:100%;max-width:960px}
-.cards4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;width:100%;max-width:960px}
+/* ── GRIDS ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;max-width:880px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;width:100%;max-width:940px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;width:100%;max-width:960px}
 
 /* ── CARD ── */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px;position:relative;overflow:hidden;transition:transform .3s,border-color .3s,box-shadow .3s}
-.card:hover{transform:translateY(-4px)}
-.card .top-bar{position:absolute;top:0;left:0;right:0;height:3px}
-.card .ico{font-size:38px;margin-bottom:14px;display:block}
-.card h3{font-size:18px;font-weight:700;margin-bottom:10px}
-.card p{font-size:14px;color:var(--muted);line-height:1.85}
-.card .ctag{margin-top:14px;display:inline-block;font-size:11px;font-family:'JetBrains Mono',monospace;padding:4px 12px;border-radius:100px;background:rgba(255,255,255,.04)}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:24px;position:relative;overflow:hidden;transition:transform .3s,box-shadow .3s}
+.card:hover{transform:translateY(-3px)}
+.card .tb{position:absolute;top:0;left:0;right:0;height:2px}
+.card .ico{font-size:34px;margin-bottom:12px;display:block}
+.card h3{font-size:17px;font-weight:700;margin-bottom:9px}
+.card p{font-size:13.5px;color:var(--mut);line-height:1.85}
 
 /* ── CODE ── */
-.code{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:2;width:100%;max-width:880px}
-.ck{color:var(--graf2)} .cv{color:var(--green)} .cc{color:var(--muted)} .cf{color:var(--accent2)} .cs{color:var(--accent)}
+.code{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px 20px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;width:100%;max-width:880px;overflow-x:auto}
+.ck{color:var(--graf2)}.cv{color:var(--grn)}.cc{color:var(--mut)}.cf{color:var(--acc2)}.cs{color:var(--acc)}.cn{color:var(--prom2)}
 
 /* ── FLOW ── */
-.flow{display:flex;align-items:center;gap:0;width:100%;max-width:950px;margin-bottom:28px}
-.fbox{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 16px;text-align:center;flex:1;transition:transform .3s}
-.fbox:hover{transform:translateY(-4px)}
-.fbox .fi{font-size:32px;margin-bottom:8px}
-.fbox h4{font-size:14px;font-weight:700;margin-bottom:4px}
-.fbox p{font-size:12px;color:var(--muted);line-height:1.6}
-.farr{font-size:26px;color:var(--accent);padding:0 6px;flex-shrink:0}
+.flow{display:flex;align-items:center;width:100%;max-width:960px;margin-bottom:24px;gap:0}
+.fb{background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:18px 14px;text-align:center;flex:1;transition:transform .3s}
+.fb:hover{transform:translateY(-3px)}
+.fb .fi{font-size:28px;margin-bottom:7px}
+.fb h4{font-size:13px;font-weight:700;margin-bottom:3px}
+.fb p{font-size:11px;color:var(--mut);line-height:1.6}
+.farr{font-size:22px;color:var(--acc);padding:0 5px;flex-shrink:0}
 
 /* ── DETAIL LAYOUT ── */
-.dlay{display:grid;grid-template-columns:1fr 1fr;gap:36px;width:100%;max-width:940px;align-items:start}
-.dleft p{font-size:14.5px;color:var(--muted);line-height:1.9;margin-bottom:16px}
-.dleft h3{font-size:22px;font-weight:800;margin-bottom:12px}
+.dlay{display:grid;grid-template-columns:1fr 1fr;gap:32px;width:100%;max-width:940px;align-items:start}
+.dleft p{font-size:14px;color:var(--mut);line-height:1.9;margin-bottom:14px}
+.dleft h3{font-size:21px;font-weight:800;margin-bottom:11px}
 .dlist{list-style:none}
-.dlist li{display:flex;align-items:flex-start;gap:10px;font-size:14px;padding:10px 0;border-bottom:1px solid var(--border);color:var(--muted);line-height:1.7}
+.dlist li{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;padding:9px 0;border-bottom:1px solid var(--border);color:var(--mut);line-height:1.7}
 .dlist li:last-child{border-bottom:none}
-.dlist li .li{font-size:16px;flex-shrink:0;margin-top:2px}
+.dlist li .li{font-size:15px;flex-shrink:0;margin-top:1px}
 
 /* ── TABLE ── */
-.tbl{width:100%;max-width:880px;border-collapse:collapse}
-.tbl th{background:var(--surface2);padding:12px 18px;font-size:13px;font-weight:700;color:var(--text);text-align:right;border-bottom:2px solid var(--border)}
-.tbl td{padding:12px 18px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--border);line-height:1.7}
+.tbl-wrap{width:100%;max-width:900px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl{width:100%;border-collapse:collapse;min-width:560px}
+.tbl th{background:var(--s2);padding:11px 16px;font-size:12.5px;font-weight:700;color:var(--text);text-align:right;border-bottom:2px solid var(--border)}
+.tbl td{padding:10px 16px;font-size:12.5px;color:var(--mut);border-bottom:1px solid var(--border);line-height:1.7}
 .tbl tr:last-child td{border-bottom:none}
 .tbl tr:hover td{background:rgba(255,255,255,.02)}
+.yes{color:var(--grn);font-weight:700}.no{color:var(--red);font-weight:700}.warn{color:var(--yel);font-weight:700}
 
-/* ── METRIC TYPES ── */
-.mtype{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;position:relative;overflow:hidden;transition:all .3s}
+/* ── METRIC TYPE ── */
+.mtype{background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:18px;position:relative;overflow:hidden;transition:all .3s}
 .mtype:hover{transform:translateY(-3px)}
 .mtype::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
-.mtype h4{font-size:15px;font-weight:700;margin-bottom:8px}
-.mtype p{font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.7}
-.mtype .ex{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--accent);background:var(--surface2);padding:4px 10px;border-radius:6px;display:inline-block}
+.mtype h4{font-size:14px;font-weight:700;margin-bottom:7px}
+.mtype p{font-size:12.5px;color:var(--mut);margin-bottom:9px;line-height:1.7}
+.mtype .ex{font-size:10.5px;font-family:'JetBrains Mono',monospace;color:var(--acc);background:var(--s2);padding:4px 10px;border-radius:6px;display:inline-block}
 
 /* ── GOLDEN SIGNALS ── */
-.gsig{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;transition:all .3s;position:relative;overflow:hidden}
-.gsig:hover{transform:translateY(-4px)}
-.gsig::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
-.gsig .gnum{position:absolute;top:14px;left:16px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);letter-spacing:2px}
-.gsig .gico{font-size:34px;margin-bottom:10px;display:block}
-.gsig h4{font-size:17px;font-weight:800;margin-bottom:8px}
-.gsig p{font-size:13px;color:var(--muted);line-height:1.75;margin-bottom:12px}
-.gsig .gq{font-size:12px;background:var(--surface2);border-radius:8px;padding:8px 12px;color:var(--accent);font-style:italic;border-right:2px solid var(--accent)}
-.gsig .gcode{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--green);margin-top:10px;background:rgba(104,211,145,.05);padding:6px 10px;border-radius:6px}
+.gsig{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:20px;transition:all .3s;position:relative;overflow:hidden}
+.gsig:hover{transform:translateY(-3px)}
+.gsig::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.gsig .gnum{position:absolute;top:12px;left:14px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--mut);letter-spacing:2px}
+.gsig .gico{font-size:30px;margin-bottom:8px;display:block}
+.gsig h4{font-size:15px;font-weight:800;margin-bottom:7px}
+.gsig p{font-size:12.5px;color:var(--mut);line-height:1.75;margin-bottom:10px}
+.gsig .gq{font-size:11.5px;background:var(--s2);border-radius:7px;padding:7px 11px;color:var(--acc);border-right:2px solid var(--acc);line-height:1.5}
+.gsig .gc{font-size:10.5px;font-family:'JetBrains Mono',monospace;color:var(--grn);margin-top:9px;background:rgba(104,211,145,.05);padding:6px 10px;border-radius:6px}
 
-/* ── PROMQL ── */
-.pql-row{display:flex;align-items:start;gap:20px;padding:14px 0;border-bottom:1px solid var(--border)}
-.pql-row:last-child{border-bottom:none}
-.pql-q{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);background:var(--surface2);padding:6px 14px;border-radius:8px;white-space:nowrap;flex-shrink:0}
-.pql-d{font-size:13px;color:var(--muted);line-height:1.7}
+/* ── PROMQL ROW ── */
+.prow{display:flex;align-items:flex-start;gap:16px;padding:12px 0;border-bottom:1px solid var(--border)}
+.prow:last-child{border-bottom:none}
+.prow .pq{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--acc);background:var(--s2);padding:5px 12px;border-radius:7px;white-space:nowrap;flex-shrink:0}
+.prow .pd{font-size:13px;color:var(--mut);line-height:1.7}
+
+/* ── NOTE ── */
+.snote{background:rgba(159,122,234,.07);border:1px solid rgba(159,122,234,.2);border-radius:11px;padding:13px 18px;width:100%;max-width:880px;margin-top:14px}
+.snote .st{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--acc2);letter-spacing:1px;margin-bottom:10px}
+.bilang{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.bilang .ar{font-size:13px;color:var(--mut);line-height:1.8;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;border-right:2px solid var(--acc2)}
+.bilang .en{font-size:13px;color:var(--mut);line-height:1.8;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;border-left:2px solid var(--acc);direction:ltr;text-align:left;font-family:'JetBrains Mono',monospace;font-size:12px}
+.bilang .en .elabel{font-size:10px;color:var(--acc);letter-spacing:1px;margin-bottom:4px;display:block}
+.bilang .ar .arlabel{font-size:10px;color:var(--acc2);letter-spacing:1px;margin-bottom:4px;display:block}
+@media(max-width:768px){.bilang{grid-template-columns:1fr}}
+
+/* ── VERDICT ── */
+.verdict{background:rgba(104,211,145,.07);border:1px solid rgba(104,211,145,.2);border-radius:11px;padding:14px 18px;width:100%;max-width:880px;margin-top:12px}
+.verdict .vt{font-size:11px;color:var(--grn);letter-spacing:1px;font-weight:700;margin-bottom:5px}
+.verdict p{font-size:13.5px;color:var(--text);line-height:1.8}
 
 /* ── ALERT BOX ── */
-.abox{background:rgba(252,129,74,.07);border:1px solid rgba(252,129,74,.25);border-radius:12px;padding:18px 22px;font-size:14px;color:var(--text);line-height:1.8;width:100%;max-width:880px}
-.abox .ahead{font-weight:700;color:var(--prom2);margin-bottom:6px;font-size:15px}
+.abox{background:rgba(255,124,82,.07);border:1px solid rgba(255,124,82,.25);border-radius:11px;padding:16px 20px;font-size:13.5px;color:var(--text);line-height:1.8;width:100%;max-width:880px}
+.abox .ah{font-weight:700;color:var(--prom2);margin-bottom:5px;font-size:14px}
 
-/* ── SPEAKER NOTE ── */
-.snote{background:rgba(159,122,234,.08);border:1px solid rgba(159,122,234,.2);border-radius:12px;padding:14px 20px;font-size:13px;color:var(--muted);line-height:1.8;width:100%;max-width:880px;margin-top:16px}
-.snote .sntitle{font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);letter-spacing:1px;margin-bottom:6px}
+/* ── EXPORTER CARD ── */
+.exp-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:20px 16px;position:relative;overflow:hidden;transition:all .3s}
+.exp-card:hover{transform:translateY(-3px)}
+.exp-card .tb{position:absolute;top:0;left:0;right:0;height:2px}
+.exp-card h4{font-size:15px;font-weight:700;margin-bottom:6px}
+.exp-card .port{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--acc);background:var(--s2);padding:3px 10px;border-radius:6px;display:inline-block;margin-bottom:8px}
+.exp-card p{font-size:12.5px;color:var(--mut);line-height:1.7}
+
+/* ── ARCH BOX ── */
+.arch{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:0;align-items:center;width:100%;max-width:900px}
+.anode{background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;transition:all .3s}
+.anode:hover{border-color:var(--acc);transform:scale(1.03)}
+.anode .ani{font-size:32px;margin-bottom:8px}
+.anode h4{font-size:13px;font-weight:700;margin-bottom:4px}
+.anode p{font-size:11px;color:var(--mut);line-height:1.6}
+.anode .port{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--acc2);margin-top:6px;display:block}
+.aconn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 8px;color:var(--acc)}
+.aconn .arr{font-size:20px}
+.aconn .lbl{font-size:10px;color:var(--mut);white-space:nowrap;font-family:'JetBrains Mono',monospace}
+
+/* ── BEST PRACTICES ── */
+.bp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:880px}
+.bp{display:flex;gap:14px;align-items:flex-start;background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px}
+.bp .bico{font-size:24px;flex-shrink:0;margin-top:2px}
+.bp h4{font-size:14px;font-weight:700;margin-bottom:5px}
+.bp p{font-size:12.5px;color:var(--mut);line-height:1.7}
 
 /* ── FINAL ── */
 #sfinal{text-align:center}
-.bigq{font-size:clamp(18px,2.8vw,32px);font-weight:700;line-height:1.7;max-width:720px;margin:0 auto 36px}
+.bigq{font-size:clamp(17px,2.6vw,30px);font-weight:700;line-height:1.7;max-width:700px;margin:0 auto 30px}
 .bigq .hl{background:linear-gradient(135deg,var(--prom2),var(--graf2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.pills{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:720px;margin:0 auto}
-.pill{background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:9px 22px;font-size:13px;transition:all .3s}
-.pill:hover{border-color:var(--accent);color:var(--accent);transform:scale(1.04)}
+.pills{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;max-width:700px;margin:0 auto}
+.pill{background:var(--s1);border:1px solid var(--border);border-radius:100px;padding:8px 20px;font-size:13px;transition:all .3s}
+.pill:hover{border-color:var(--acc);color:var(--acc);transform:scale(1.04)}
 
-@keyframes pulse{0%,100%{opacity:.1}50%{opacity:.18}}
-.blob{animation:pulse 5s ease-in-out infinite}
+/* ══ MOBILE ══ */
+@media(max-width:768px){
+  .slide{padding:48px 14px 58px;justify-content:flex-start;overflow-y:auto;overflow-x:hidden}
+  #s1{justify-content:center}
+  .nav-btn{width:34px;height:34px;font-size:17px}
+  #btn-prev{right:6px}#btn-next{left:6px}
+  #slide-badge{font-size:10px;padding:4px 10px}
+  .stitle{font-size:clamp(16px,5vw,24px)}
+  #s1 h1{font-size:clamp(26px,8vw,42px)}
+  #s1 .sub{font-size:13px;margin-bottom:24px}
+  .g2,.g3,.g4{grid-template-columns:1fr!important;gap:10px}
+  .dlay{grid-template-columns:1fr;gap:14px}
+  .flow{flex-direction:column;gap:8px}
+  .farr{transform:rotate(90deg);padding:2px 0;font-size:18px}
+  .arch{grid-template-columns:1fr;gap:8px}
+  .aconn{display:none}
+  .tbl-wrap{border-radius:10px}
+  .tbl{font-size:11px}
+  .tbl th,.tbl td{padding:8px 10px}
+  .card,.mtype,.gsig,.exp-card,.anode,.bp{padding:14px}
+  .card h3{font-size:15px}
+  .card p,.mtype p,.gsig p,.bp p{font-size:12px}
+  .code{font-size:11px;padding:12px 14px}
+  .prow{flex-direction:column;gap:6px}
+  .prow .pq{white-space:normal;word-break:break-all}
+  .bp-grid{grid-template-columns:1fr}
+  .snote,.verdict,.abox{padding:12px 14px;font-size:12.5px}
+  .sline{margin-bottom:16px}
+  .bigq{font-size:clamp(15px,4.5vw,22px);margin-bottom:20px}
+  .pills{gap:7px}
+  .pill{padding:7px 14px;font-size:12px}
+  #kb{display:none}
+  .dot{width:5px;height:5px}
+  .dot.active{width:14px}
+  #dots{bottom:8px}
+}
 </style>
 </head>
 <body>
-
 <div id="prog"></div>
 <button class="nav-btn" id="btn-prev" onclick="go(-1)">&#8250;</button>
 <button class="nav-btn" id="btn-next" onclick="go(1)">&#8249;</button>
+<div id="slide-badge">1 / 22</div>
 <div id="dots"></div>
 <div id="kb">← → للتنقل · Space للأمام</div>
-
 <div id="wrap">
 
-<!-- ══════════════════════════════════════════
-     SLIDE 1 — COVER
-══════════════════════════════════════════ -->
+<!-- ══ S1: COVER ══ -->
 <section class="slide active" id="s1">
-  <div class="blob" style="width:550px;height:550px;background:var(--prom);top:-180px;right:-120px"></div>
-  <div class="blob" style="width:400px;height:400px;background:var(--accent);bottom:-130px;left:-100px;animation-delay:2s"></div>
-  <div class="badge">📊 Monitoring & Observability — شرح مفصّل</div>
-  <h1>
-    <span style="color:var(--prom2)">Prometheus</span>
-    <span style="color:var(--muted)"> & </span>
-    <span style="color:var(--graf2)">Grafana</span>
-  </h1>
-  <p class="sub">كيف نراقب صحة أنظمتنا ونكتشف المشاكل قبل أن يراها المستخدم</p>
+  <div class="blob" style="width:500px;height:500px;background:var(--prom);top:-180px;right:-100px"></div>
+  <div class="blob" style="width:380px;height:380px;background:var(--acc);bottom:-120px;left:-80px;animation-delay:3s"></div>
+  <div class="badge">📊 Monitoring & Observability — شرح موسّع</div>
+  <h1><span style="color:var(--prom2)">Prometheus</span> <span style="color:var(--mut)">&</span> <span style="color:var(--graf2)">Grafana</span></h1>
+  <p class="sub">كيف نراقب صحة أنظمتنا ونكتشف المشاكل قبل أن يراها المستخدم — من الأساسيات للـ Production</p>
   <div class="tags">
-    <span class="tag">Monitoring</span>
-    <span class="tag">Time-Series DB</span>
-    <span class="tag">Visualization</span>
-    <span class="tag">Alerting</span>
-    <span class="tag">PromQL</span>
-    <span class="tag">Open Source</span>
+    <span class="tag">Monitoring</span><span class="tag">TSDB</span><span class="tag">PromQL</span>
+    <span class="tag">Alerting</span><span class="tag">Exporters</span><span class="tag">Grafana</span>
+    <span class="tag">Docker</span><span class="tag">Open Source</span>
   </div>
 </section>
 
-<!-- ══════════════════════════════════════════
-     SLIDE 2 — المشكلة اللي بتحلها
-══════════════════════════════════════════ -->
+<!-- ══ S2: المشكلة ══ -->
 <section class="slide" id="s2">
   <div class="blob" style="width:400px;height:400px;background:var(--red);top:-100px;left:-80px"></div>
-  <div class="snum">المشكلة</div>
-  <h2 class="stitle">المشكلة — ليه أصلاً محتاجين Monitoring؟</h2>
-  <div class="sline" style="width:80px;background:var(--red)"></div>
-  <div class="cards2" style="max-width:860px">
+  <h2 class="stitle">😱 المشكلة — ليه محتاجين Monitoring؟</h2>
+  <div class="sline" style="width:70px;background:var(--red)"></div>
+  <div class="g2" style="margin-bottom:14px">
     <div class="card">
-      <div class="top-bar" style="background:var(--red)"></div>
-      <span class="ico">😱</span>
+      <div class="tb" style="background:var(--red)"></div>
+      <span class="ico">🔥</span>
       <h3 style="color:var(--red)">بدون Monitoring</h3>
-      <p>عارفت إن السيرفر وقع لما المستخدم بعتلك رسالة غضبان<br><br>
-      عارفت إن الداتابيز بطيئة لما كل الناس اشتكت في نفس الوقت<br><br>
-      عارفت إن في memory leak بعد ما السيرفر crash وبدأت تدور في الكود ساعات</p>
+      <p>• عارفت إن السيرفر وقع لما المستخدم بعت شكوى<br><br>
+         • عارفت إن الـ DB بطيئة لما كل الناس اشتكت<br><br>
+         • قضيت ساعات تدور في الـ logs عشان تفهم إيه اللي حصل<br><br>
+         • مفيش بيانات تاريخية تساعدك تفهم متى بدأت المشكلة</p>
     </div>
     <div class="card">
-      <div class="top-bar" style="background:var(--green)"></div>
+      <div class="tb" style="background:var(--grn)"></div>
       <span class="ico">✅</span>
-      <h3 style="color:var(--green)">مع Monitoring</h3>
-      <p>Prometheus شاف إن الـ CPU وصل 90% — قبل ما حاجة تحصل<br><br>
-      Grafana بعتلك alert على Slack إن الـ requests بدأت تتأخر<br><br>
-      أنت صحيت الصبح، شفت الـ dashboard، وعرفت في دقايق إيه اللي حصل بالليل</p>
+      <h3 style="color:var(--grn)">مع Monitoring</h3>
+      <p>• Prometheus شاف الـ CPU وصل 90% — قبل ما حاجة تحصل<br><br>
+         • Grafana بعتلك alert على Slack قبل ما المستخدم يحس<br><br>
+         • صحيت الصبح، فتحت الـ dashboard، وفهمت القصة كلها في دقيقتين<br><br>
+         • عندك بيانات تاريخية لأي وقت تقدر ترجع إليها</p>
     </div>
   </div>
   <div class="snote">
-    <div class="sntitle">💬 قولها بالكلام الطبيعي</div>
-    "تخيل إنك بتشتغل في مطعم وملكيش مقياس — مش عارف كام طلب جاي، مش عارف لو في طبخة اتحرقت، مش عارف لو الغاز هيخلص. Prometheus هو الـ dashboard بتاع المطبخ اللي بيديك كل المقاييس دي في real-time."
+    <div class="st">💬 كيف تشرحها</div>
+    <div class="bilang">
+      <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>"تخيل إنك بتشتغل في مطعم بدون أي شاشة أو مقياس — مش عارف كام طلب جاي، مش عارف الغاز هيخلص، مش عارف لو في طبخة اتحرقت. Prometheus هو كل الشاشات والمقاييس دي."</div>
+      <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>"Imagine running a restaurant with no dashboards or gauges — you don't know how many orders are coming, whether the gas is running out, or if something is burning. Prometheus is all those sensors and dashboards combined."</div>
+    </div>
   </div>
 </section>
 
-<!-- ══════════════════════════════════════════
-     SLIDE 3 — ما هو Prometheus بالتفصيل
-══════════════════════════════════════════ -->
+<!-- ══ S3: Architecture ══ -->
 <section class="slide" id="s3">
+  <div class="blob" style="width:400px;height:400px;background:var(--acc);top:-100px;right:-80px"></div>
+  <h2 class="stitle">🏗️ المعمارية الكاملة للنظام</h2>
+  <div class="sline" style="width:70px;background:var(--acc)"></div>
+  <div class="arch" style="margin-bottom:16px">
+    <div class="anode">
+      <div class="ani">🖥️</div>
+      <h4>Your App</h4>
+      <p>بيعمل expose لـ metrics</p>
+      <span class="port">:8080/metrics</span>
+    </div>
+    <div class="aconn"><div class="arr">←</div><div class="lbl">scrape<br>15s</div></div>
+    <div class="anode" style="border-color:rgba(230,82,44,.4)">
+      <div class="ani">🔥</div>
+      <h4>Prometheus</h4>
+      <p>يجمع ويخزن time-series</p>
+      <span class="port">:9090</span>
+    </div>
+    <div class="aconn"><div class="arr">←</div><div class="lbl">query<br>PromQL</div></div>
+    <div class="anode" style="border-color:rgba(245,166,35,.4)">
+      <div class="ani">📈</div>
+      <h4>Grafana</h4>
+      <p>dashboards تفاعلية</p>
+      <span class="port">:3000</span>
+    </div>
+  </div>
+  <div class="g3" style="max-width:900px">
+    <div class="card" style="padding:18px">
+      <div class="tb" style="background:var(--prom2)"></div>
+      <span style="font-size:24px;display:block;margin-bottom:8px">📤</span>
+      <h3 style="font-size:15px">Exporters</h3>
+      <p style="font-size:12.5px">node_exporter, mysqld_exporter — بتجمع metrics من الـ infrastructure</p>
+    </div>
+    <div class="card" style="padding:18px">
+      <div class="tb" style="background:var(--red)"></div>
+      <span style="font-size:24px;display:block;margin-bottom:8px">🔔</span>
+      <h3 style="font-size:15px">Alertmanager</h3>
+      <p style="font-size:12.5px">:9093 — بيستقبل alerts من Prometheus ويبعتها على Slack/Email</p>
+    </div>
+    <div class="card" style="padding:18px">
+      <div class="tb" style="background:var(--acc2)"></div>
+      <span style="font-size:24px;display:block;margin-bottom:8px">🗃️</span>
+      <h3 style="font-size:15px">TSDB</h3>
+      <p style="font-size:12.5px">Time-Series Database — Prometheus بيخزن البيانات locally على disk</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S4: Prometheus ══ -->
+<section class="slide" id="s4">
   <div class="blob" style="width:450px;height:450px;background:var(--prom);top:-130px;right:-100px"></div>
-  <div class="snum">01 / 05</div>
   <h2 class="stitle" style="color:var(--prom2)">🔥 Prometheus — من هو؟</h2>
-  <div class="sline" style="width:80px;background:var(--prom2)"></div>
+  <div class="sline" style="width:70px;background:var(--prom2)"></div>
   <div class="dlay">
     <div class="dleft">
-      <h3>تعريف بسيط</h3>
-      <p>Prometheus هو نظام <strong style="color:var(--text)">Monitoring مفتوح المصدر</strong> بيجمع البيانات من تطبيقاتك ويخزنها كـ <strong style="color:var(--accent)">time-series</strong> — يعني كل قيمة مرتبطة بـ timestamp محددة.</p>
-      <p>الفرق الأساسي عن أي database عادية: هو مش بس بيخزن "إيه القيمة" — هو بيخزن "القيمة دي كانت كام في أي وقت".</p>
+      <h3>تعريف مبسّط</h3>
+      <p>Prometheus هو <strong style="color:var(--text)">نظام Monitoring مفتوح المصدر</strong> بيجمع البيانات من تطبيقاتك ويخزنها كـ <strong style="color:var(--acc)">time-series</strong> — يعني كل قيمة مرتبطة بـ timestamp.</p>
+      <p>الفرق عن أي database عادية: هو مش بس بيخزن "إيه القيمة" — هو بيخزن "القيمة كانت كام في كل وقت".</p>
       <ul class="dlist">
-        <li><span class="li">🏗️</span><span>بُني عام 2012 في SoundCloud، دلوقتي بـ CNCF</span></li>
-        <li><span class="li">📥</span><span><strong style="color:var(--text)">Pull model</strong> — هو اللي بيجي يسحب البيانات، مش بيستنى حد يبعتها</span></li>
-        <li><span class="li">🗃️</span><span>بيخزن البيانات locally كـ time-series database (TSDB)</span></li>
-        <li><span class="li">🔎</span><span>بيتعامل معاه بلغة استعلام اسمها <strong style="color:var(--accent)">PromQL</strong></span></li>
-        <li><span class="li">🔔</span><span>بيبعت alerts عبر <strong style="color:var(--text)">Alertmanager</strong> لما حاجة تعدى الحد</span></li>
+        <li><span class="li">🏗️</span><span>بُني 2012 في <strong style="color:var(--text)">SoundCloud</strong>، وصل لـ CNCF 2016</span></li>
+        <li><span class="li">📥</span><span><strong style="color:var(--text)">Pull model</strong> — هو اللي بيجي يسحب، مش بيستنى</span></li>
+        <li><span class="li">🗃️</span><span>يخزن locally كـ <strong style="color:var(--text)">TSDB</strong> — افتراضي 15 يوم</span></li>
+        <li><span class="li">🔎</span><span>لغة استعلام خاصة: <strong style="color:var(--acc)">PromQL</strong></span></li>
+        <li><span class="li">🔔</span><span>نظام تنبيهات: <strong style="color:var(--text)">Alertmanager</strong></span></li>
+        <li><span class="li">🌐</span><span>واجهة UI على <strong style="color:var(--acc)">:9090</strong> للاستعلام المباشر</span></li>
       </ul>
     </div>
     <div>
       <div class="code">
-<span class="cc"># Prometheus يجمع بيانات زي دي:</span><br>
+<span class="cc"># شكل البيانات داخل Prometheus</span><br>
+<span class="cc"># metric_name{labels} value @timestamp</span><br>
 <br>
-<span class="cc"># اسم الـ metric + labels + القيمة + الوقت</span><br>
-<span class="cs">http_requests_total</span>{<span class="ck">method</span>=<span class="cv">"GET"</span>, <span class="ck">status</span>=<span class="cv">"200"</span>} <span class="cv">1523</span> <span class="cc">@1717000000</span><br>
-<span class="cs">http_requests_total</span>{<span class="ck">method</span>=<span class="cv">"POST"</span>, <span class="ck">status</span>=<span class="cv">"500"</span>} <span class="cv">12</span> <span class="cc">@1717000000</span><br>
+<span class="cs">http_requests_total</span>{<span class="ck">method</span>=<span class="cv">"GET"</span>,<span class="ck">status</span>=<span class="cv">"200"</span>} <span class="cv">1523</span><br>
+<span class="cs">http_requests_total</span>{<span class="ck">method</span>=<span class="cv">"POST"</span>,<span class="ck">status</span>=<span class="cv">"500"</span>} <span class="cv">12</span><br>
 <br>
-<span class="cs">cpu_usage_percent</span>{<span class="ck">instance</span>=<span class="cv">"server-1"</span>} <span class="cv">73.5</span> <span class="cc">@1717000000</span><br>
-<span class="cs">memory_used_bytes</span>{<span class="ck">instance</span>=<span class="cv">"server-1"</span>} <span class="cv">52428800</span> <span class="cc">@1717000000</span><br>
+<span class="cs">cpu_usage_percent</span>{<span class="ck">instance</span>=<span class="cv">"web-1"</span>} <span class="cv">73.5</span><br>
+<span class="cs">cpu_usage_percent</span>{<span class="ck">instance</span>=<span class="cv">"web-2"</span>} <span class="cv">68.1</span><br>
 <br>
-<span class="cc"># كل 15 ثانية بيسجل snapshot جديدة</span><br>
-<span class="cs">cpu_usage_percent</span>{<span class="ck">instance</span>=<span class="cv">"server-1"</span>} <span class="cv">74.2</span> <span class="cc">@1717000015</span><br>
-<span class="cs">cpu_usage_percent</span>{<span class="ck">instance</span>=<span class="cv">"server-1"</span>} <span class="cv">71.8</span> <span class="cc">@1717000030</span>
+<span class="cc"># كل 15 ثانية — snapshot جديدة</span><br>
+<span class="cs">cpu_usage_percent</span>{<span class="ck">instance</span>=<span class="cv">"web-1"</span>} <span class="cv">74.2</span><br>
+<span class="cs">cpu_usage_percent</span>{<span class="ck">instance</span>=<span class="cv">"web-1"</span>} <span class="cv">71.8</span>
       </div>
-      <div class="snote" style="margin-top:14px">
-        <div class="sntitle">💬 اشرحها كده</div>
-        "تخيل إن Prometheus بياخد صورة لحالة السيرفر كل 15 ثانية ويحطها في ألبوم — بعدين تقدر ترجع لأي صورة وتشوف إيه اللي كان بيحصل في أي وقت"
+      <div class="snote" style="margin-top:12px">
+        <div class="st">💬 كيف تشرحها</div>
+        <div class="bilang">
+          <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>"Prometheus بياخد صورة لحالة السيرفر كل 15 ثانية ويحطها في ألبوم — تقدر ترجع لأي صورة وتشوف إيه اللي كان بيحصل في أي وقت"</div>
+          <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>"Prometheus takes a snapshot of your server's health every 15 seconds and stores it — like a photo album. You can go back to any point in time and see exactly what was happening."</div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ══════════════════════════════════════════
-     SLIDE 4 — ما هو Grafana بالتفصيل
-══════════════════════════════════════════ -->
-<section class="slide" id="s4">
-  <div class="blob" style="width:450px;height:450px;background:var(--graf);bottom:-130px;left:-80px"></div>
-  <div class="snum">02 / 05</div>
+<!-- ══ S5: Grafana ══ -->
+<section class="slide" id="s5">
+  <div class="blob" style="width:420px;height:420px;background:var(--graf);bottom:-120px;left:-80px"></div>
   <h2 class="stitle" style="color:var(--graf2)">📈 Grafana — من هو؟</h2>
-  <div class="sline" style="width:80px;background:var(--graf2)"></div>
+  <div class="sline" style="width:70px;background:var(--graf2)"></div>
   <div class="dlay">
     <div class="dleft">
-      <h3>تعريف بسيط</h3>
-      <p>Grafana هو منصة <strong style="color:var(--text)">Visualization مفتوحة المصدر</strong> بتحول البيانات الخام اللي Prometheus بيجمعها لـ <strong style="color:var(--graf2)">dashboards وgraphs</strong> تقدر تشوفها وتفهمها بنظرة واحدة.</p>
-      <p>Grafana <strong style="color:var(--red)">مش بيخزن بيانات</strong> — هو فقط بيقرأ من Prometheus ويعرضها. زي الشاشة مع الحاسبة.</p>
+      <h3>تعريف مبسّط</h3>
+      <p>Grafana هو منصة <strong style="color:var(--text)">Visualization مفتوحة المصدر</strong> بتحول بيانات Prometheus لـ <strong style="color:var(--graf2)">dashboards وgraphs</strong> تفهمها في ثانية.</p>
+      <p>Grafana <strong style="color:var(--red)">مش بيخزن بيانات</strong> — بيقرأ من Prometheus ويعرض. زي الشاشة مع الحاسبة.</p>
       <ul class="dlist">
-        <li><span class="li">🎨</span><span>Dashboards تفاعلية — ممكن تعمل zoom وتفلتر في real-time</span></li>
-        <li><span class="li">🔌</span><span>بيتصل بأكتر من 50 data source — مش بس Prometheus</span></li>
-        <li><span class="li">🔔</span><span>Alerting — بيبعت إشعارات على Slack/Email/PagerDuty</span></li>
-        <li><span class="li">👥</span><span>Team sharing — أكتر من شخص يشوف نفس الـ dashboard</span></li>
-        <li><span class="li">🌐</span><span>على المتصفح مباشرة — مش محتاج تنصّب حاجة</span></li>
+        <li><span class="li">🎨</span><span>Dashboards تفاعلية — zoom وفلتر في real-time</span></li>
+        <li><span class="li">🔌</span><span>أكتر من <strong style="color:var(--text)">50 data source</strong> — مش بس Prometheus</span></li>
+        <li><span class="li">🔔</span><span>Alerting مستقل — Slack/Email/PagerDuty/Webhook</span></li>
+        <li><span class="li">👥</span><span>Team sharing + Roles + Permissions</span></li>
+        <li><span class="li">📱</span><span>على المتصفح — :3000 — مش محتاج تنصيب</span></li>
+        <li><span class="li">🎯</span><span>Import dashboards جاهزة من grafana.com/dashboards</span></li>
       </ul>
     </div>
     <div>
-      <div class="card" style="margin-bottom:14px;padding:24px">
-        <div class="top-bar" style="background:var(--graf2)"></div>
-        <h3 style="color:var(--graf2);margin-bottom:14px;font-size:16px">🎯 إيه اللي بيعرضه Grafana؟</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
-          <div style="background:var(--surface2);border-radius:10px;padding:12px;color:var(--muted)">📊 <strong style="color:var(--text)">Time Series</strong><br>بيان الـ CPU على مدى ساعة</div>
-          <div style="background:var(--surface2);border-radius:10px;padding:12px;color:var(--muted)">🥧 <strong style="color:var(--text)">Pie Chart</strong><br>توزيع أنواع الـ requests</div>
-          <div style="background:var(--surface2);border-radius:10px;padding:12px;color:var(--muted)">🔢 <strong style="color:var(--text)">Stat Panel</strong><br>عدد الـ requests الكلي</div>
-          <div style="background:var(--surface2);border-radius:10px;padding:12px;color:var(--muted)">🌡️ <strong style="color:var(--text)">Gauge</strong><br>نسبة الـ RAM المستخدمة</div>
+      <div class="card" style="padding:20px;margin-bottom:12px">
+        <div class="tb" style="background:var(--graf2)"></div>
+        <h3 style="color:var(--graf2);margin-bottom:14px;font-size:15px">🖼️ أنواع الـ Panels</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;font-size:12px">
+          <div style="background:var(--s2);border-radius:9px;padding:10px;color:var(--mut)">📊 <strong style="color:var(--text)">Time Series</strong><br>CPU على مدى ساعة</div>
+          <div style="background:var(--s2);border-radius:9px;padding:10px;color:var(--mut)">🥧 <strong style="color:var(--text)">Pie Chart</strong><br>توزيع الـ requests</div>
+          <div style="background:var(--s2);border-radius:9px;padding:10px;color:var(--mut)">🔢 <strong style="color:var(--text)">Stat</strong><br>إجمالي الطلبات</div>
+          <div style="background:var(--s2);border-radius:9px;padding:10px;color:var(--mut)">🌡️ <strong style="color:var(--text)">Gauge</strong><br>نسبة الـ RAM</div>
+          <div style="background:var(--s2);border-radius:9px;padding:10px;color:var(--mut)">🗺️ <strong style="color:var(--text)">Heatmap</strong><br>توزيع الـ latency</div>
+          <div style="background:var(--s2);border-radius:9px;padding:10px;color:var(--mut)">📋 <strong style="color:var(--text)">Table</strong><br>أبطأ الـ endpoints</div>
         </div>
       </div>
       <div class="snote">
-        <div class="sntitle">💬 اشرحها كده</div>
-        "Prometheus هو الـ Excel بيجمع الأرقام، وGrafana هو الـ PowerPoint بيحول الأرقام دي لgraphs جميلة تقدر تشوف منها القصة كلها بنظرة"
+        <div class="st">💬 كيف تشرحها</div>
+        <div class="bilang">
+          <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>"Prometheus زي Excel بيجمع الأرقام — Grafana زي Power BI بيحولها لداشبورد تقدر تفهم منها القصة بنظرة واحدة"</div>
+          <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>"Prometheus is like Excel — it collects raw numbers. Grafana is like Power BI — it turns those numbers into beautiful dashboards you can understand at a glance."</div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ══════════════════════════════════════════
-     SLIDE 5 — كيف يعمل النظام كامل
-══════════════════════════════════════════ -->
-<section class="slide" id="s5">
-  <div class="blob" style="width:400px;height:400px;background:var(--accent);top:-100px;right:-80px"></div>
-  <div class="snum">03 / 05</div>
-  <h2 class="stitle">⚙️ كيف يعمل النظام كله مع بعض؟</h2>
-  <div class="sline" style="width:80px;background:var(--accent)"></div>
-  <div class="flow">
-    <div class="fbox">
-      <div class="fi">🖥️</div>
-      <h4>تطبيقك</h4>
-      <p>بيعمل expose لـ metrics على<br><code style="color:var(--accent);font-family:'JetBrains Mono'">/metrics</code></p>
+<!-- ══ S6: Pull vs Push ══ -->
+<section class="slide" id="s6">
+  <div class="blob" style="width:400px;height:400px;background:var(--acc2);top:-100px;right:-80px"></div>
+  <h2 class="stitle">📥 Pull Model vs Push Model</h2>
+  <div class="sline" style="width:70px;background:var(--acc2)"></div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="tb" style="background:var(--prom2)"></div>
+      <span class="ico">📥</span>
+      <h3 style="color:var(--prom2)">Pull Model — Prometheus</h3>
+      <p><strong style="color:var(--text)">Prometheus هو اللي بيجي يسحب البيانات</strong> من التطبيق كل 15 ثانية<br><br>
+      ✅ لو التطبيق وقع — Prometheus عارف لأنه مش بيلاقي حاجة يسحبها<br><br>
+      ✅ التطبيق مش محتاج يعرف عنوان Prometheus<br><br>
+      ✅ سهل تـ debug — افتح <code style="color:var(--acc);font-family:'JetBrains Mono'">/metrics</code> في البراوزر وشوف<br><br>
+      ⚠️ محتاج تعمل expose لـ endpoint في كل تطبيق</p>
     </div>
-    <div class="farr">←</div>
-    <div class="fbox">
-      <div class="fi">🔥</div>
-      <h4>Prometheus</h4>
-      <p>كل 15 ثانية بيجي يسحب ويخزّن</p>
-    </div>
-    <div class="farr">←</div>
-    <div class="fbox">
-      <div class="fi">🔔</div>
-      <h4>Alertmanager</h4>
-      <p>لو حاجة وصلت للحد، يبعت notification</p>
-    </div>
-    <div class="farr">←</div>
-    <div class="fbox">
-      <div class="fi">📈</div>
-      <h4>Grafana</h4>
-      <p>بيتصل بـ Prometheus ويعرض الـ dashboards</p>
-    </div>
-    <div class="farr">←</div>
-    <div class="fbox">
-      <div class="fi">👨‍💻</div>
-      <h4>أنت</h4>
-      <p>بتشوف كل حاجة على المتصفح في real-time</p>
+    <div class="card">
+      <div class="tb" style="background:var(--acc)"></div>
+      <span class="ico">📤</span>
+      <h3 style="color:var(--acc)">Push Model — البديل</h3>
+      <p><strong style="color:var(--text)">التطبيق هو اللي بيبعت البيانات</strong> لمكان مركزي بنفسه<br><br>
+      ✅ يصلح للـ batch jobs والـ short-lived processes<br><br>
+      ✅ ما محتاجش Prometheus يوصل للتطبيق<br><br>
+      ⚠️ لو التطبيق وقع مش هتعرف — هو ببساطة بطّل يبعت<br><br>
+      ⚠️ صعب تعرف الفرق بين "التطبيق وقع" و"مش في بيانات"</p>
     </div>
   </div>
-  <div class="code">
-<span class="cc"># prometheus.yml — ملف الإعداد الرئيسي</span><br>
-<br>
-<span class="ck">global:</span><br>
-&nbsp;&nbsp;<span class="ck">scrape_interval:</span> <span class="cv">15s</span> &nbsp;&nbsp;&nbsp;&nbsp;<span class="cc"># كل كام ثانية يسحب البيانات</span><br>
-<br>
-<span class="ck">scrape_configs:</span><br>
-&nbsp;&nbsp;- <span class="ck">job_name:</span> <span class="cv">'my-backend'</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">static_configs:</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">targets:</span> [<span class="cv">'backend-app:8080'</span>] &nbsp;<span class="cc"># عنوان تطبيقك</span><br>
-<br>
-&nbsp;&nbsp;- <span class="ck">job_name:</span> <span class="cv">'server-metrics'</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">static_configs:</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">targets:</span> [<span class="cv">'node-exporter:9100'</span>] <span class="cc"># metrics السيرفر نفسه</span>
+  <div class="card" style="max-width:880px;width:100%;padding:18px">
+    <div class="tb" style="background:var(--grn)"></div>
+    <h3 style="color:var(--grn);font-size:15px;margin-bottom:10px">⭐ Prometheus Pushgateway — لما تحتاج Push</h3>
+    <p style="font-size:13px;color:var(--mut)">Prometheus بيوفر Pushgateway للـ batch jobs اللي بتخلص وتوقف — التطبيق يبعت metrics للـ Pushgateway، وPrometheus يسحب منه هو. أحسن من ما يكون push مباشرة.</p>
   </div>
 </section>
 
-<!-- ══════════════════════════════════════════
-     SLIDE 6 — أنواع الـ Metrics
-══════════════════════════════════════════ -->
-<section class="slide" id="s6">
-  <div class="blob" style="width:400px;height:400px;background:var(--accent2);bottom:-100px;right:-80px"></div>
-  <div class="snum">04 / 05 — Part A</div>
+<!-- ══ S7: Exporters ══ -->
+<section class="slide" id="s7">
+  <div class="blob" style="width:400px;height:400px;background:var(--grn);bottom:-100px;left:-80px;opacity:.12"></div>
+  <h2 class="stitle" style="color:var(--grn)">📤 Exporters — أدوات جمع البيانات</h2>
+  <div class="sline" style="width:70px;background:var(--grn)"></div>
+  <div class="g3" style="margin-bottom:14px">
+    <div class="exp-card">
+      <div class="tb" style="background:var(--prom2)"></div>
+      <h4 style="color:var(--prom2)">node_exporter</h4>
+      <span class="port">:9100/metrics</span>
+      <p>metrics السيرفر نفسه — CPU, RAM, Disk, Network. الأكثر استخداماً وضروري في أي setup.</p>
+    </div>
+    <div class="exp-card">
+      <div class="tb" style="background:#4299e1"></div>
+      <h4 style="color:#4299e1">mysqld_exporter</h4>
+      <span class="port">:9104/metrics</span>
+      <p>metrics قاعدة بيانات MySQL — عدد الـ queries، الـ connections، slow queries.</p>
+    </div>
+    <div class="exp-card">
+      <div class="tb" style="background:#ed8936"></div>
+      <h4 style="color:#ed8936">redis_exporter</h4>
+      <span class="port">:9121/metrics</span>
+      <p>metrics الـ Redis — memory usage، cache hit rate، connections.</p>
+    </div>
+    <div class="exp-card">
+      <div class="tb" style="background:var(--acc2)"></div>
+      <h4 style="color:var(--acc2)">blackbox_exporter</h4>
+      <span class="port">:9115/metrics</span>
+      <p>بيعمل probe على endpoints خارجية — HTTP، DNS، TCP. يعرفك لو الموقع تاني شغال.</p>
+    </div>
+    <div class="exp-card">
+      <div class="tb" style="background:var(--grn)"></div>
+      <h4 style="color:var(--grn)">Custom Exporter</h4>
+      <span class="port">/:PORT/metrics</span>
+      <p>أنت بتعمله في تطبيقك — بتستخدم مكتبة <code style="color:var(--acc)">prom-client</code> وتعرّف metrics خاصة بـ business logic.</p>
+    </div>
+    <div class="exp-card">
+      <div class="tb" style="background:var(--yel)"></div>
+      <h4 style="color:var(--yel)">kubernetes SD</h4>
+      <span class="port">Service Discovery</span>
+      <p>بيكتشف الـ pods تلقائياً في Kubernetes ويضيفهم كـ scrape targets بدون إعداد يدوي.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S8: How it works ══ -->
+<section class="slide" id="s8">
+  <div class="blob" style="width:400px;height:400px;background:var(--acc);top:-100px;right:-80px"></div>
+  <h2 class="stitle">⚙️ كيف يعمل النظام خطوة بخطوة</h2>
+  <div class="sline" style="width:70px;background:var(--acc)"></div>
+  <div class="flow" style="margin-bottom:16px">
+    <div class="fb"><div class="fi">🖥️</div><h4>تطبيقك</h4><p>Expose<br><code style="color:var(--acc);font-size:10px">/metrics</code></p></div>
+    <div class="farr">←</div>
+    <div class="fb"><div class="fi">📤</div><h4>node_exporter</h4><p>CPU/RAM<br>:9100</p></div>
+    <div class="farr">←</div>
+    <div class="fb"><div class="fi">🔥</div><h4>Prometheus</h4><p>Scrapes<br>every 15s</p></div>
+    <div class="farr">←</div>
+    <div class="fb"><div class="fi">🔔</div><h4>Alertmanager</h4><p>Rules &<br>Notifications</p></div>
+    <div class="farr">←</div>
+    <div class="fb"><div class="fi">📈</div><h4>Grafana</h4><p>Queries<br>PromQL</p></div>
+    <div class="farr">←</div>
+    <div class="fb"><div class="fi">👨‍💻</div><h4>أنت</h4><p>Dashboard<br>+ Alerts</p></div>
+  </div>
+  <div class="code">
+<span class="cc"># prometheus.yml — الملف الرئيسي</span><br>
+<span class="ck">global:</span><br>
+&nbsp;&nbsp;<span class="ck">scrape_interval:</span> <span class="cv">15s</span><br>
+&nbsp;&nbsp;<span class="ck">evaluation_interval:</span> <span class="cv">15s</span> &nbsp;<span class="cc"># كل كام ثانية يتحقق من الـ alert rules</span><br>
+<br>
+<span class="ck">scrape_configs:</span><br>
+&nbsp;&nbsp;- <span class="ck">job_name:</span> <span class="cv">'my-api'</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">static_configs:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">targets:</span> [<span class="cv">'api:8080'</span>, <span class="cv">'api-2:8080'</span>]<br>
+&nbsp;&nbsp;- <span class="ck">job_name:</span> <span class="cv">'node'</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">static_configs:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">targets:</span> [<span class="cv">'node-exporter:9100'</span>]
+  </div>
+</section>
+
+<!-- ══ S9: Metric Types ══ -->
+<section class="slide" id="s9">
+  <div class="blob" style="width:380px;height:380px;background:var(--acc2);bottom:-100px;right:-80px"></div>
   <h2 class="stitle">📦 أنواع الـ Metrics الأربعة</h2>
-  <div class="sline" style="width:80px;background:var(--accent2)"></div>
-  <div class="cards4">
+  <div class="sline" style="width:70px;background:var(--acc2)"></div>
+  <div class="g4" style="margin-bottom:14px">
     <div class="mtype">
-      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)"></div>
-      <h4 style="color:var(--accent)">Counter 🔢</h4>
-      <p>بيتزود فقط — مش بينقص أبداً. زي عداد السيارة.</p>
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--acc)"></div>
+      <h4 style="color:var(--acc)">Counter 🔢</h4>
+      <p>بيتزود فقط — مش بينقص. زي عداد السيارة يودّع لما تفتحه من 0.</p>
       <div class="ex">http_requests_total</div>
-      <p style="font-size:11px;color:var(--muted);margin-top:8px">⚠️ لو إيه؟ عدد الطلبات، عدد الأخطاء، عدد المستخدمين الجدد</p>
+      <p style="font-size:11px;margin-top:8px">عدد الطلبات، عدد الأخطاء، عدد المستخدمين الجدد</p>
     </div>
     <div class="mtype">
-      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--green)"></div>
-      <h4 style="color:var(--green)">Gauge 📊</h4>
-      <p>بيزيد وبينقص. زي درجة الحرارة.</p>
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--grn)"></div>
+      <h4 style="color:var(--grn)">Gauge 📊</h4>
+      <p>بيزيد وبينقص بحرية. زي درجة الحرارة أو مقياس السرعة.</p>
       <div class="ex">memory_used_bytes</div>
-      <p style="font-size:11px;color:var(--muted);margin-top:8px">⚠️ لو إيه؟ RAM، CPU، عدد الـ connections الحالية</p>
+      <p style="font-size:11px;margin-top:8px">RAM، CPU، عدد الـ active connections</p>
     </div>
     <div class="mtype">
       <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--graf2)"></div>
       <h4 style="color:var(--graf2)">Histogram 📉</h4>
-      <p>بيوزّع القيم على buckets ويحسب التوزيع.</p>
+      <p>بيوزّع القيم على buckets ويحسب sum وcount وcumulative.</p>
       <div class="ex">request_duration_seconds</div>
-      <p style="font-size:11px;color:var(--muted);margin-top:8px">⚠️ لو إيه؟ وقت الاستجابة، حجم الـ response</p>
+      <p style="font-size:11px;margin-top:8px">وقت الاستجابة، حجم الـ response — يحسب percentiles</p>
     </div>
     <div class="mtype">
-      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent2)"></div>
-      <h4 style="color:var(--accent2)">Summary 📋</h4>
-      <p>زي Histogram بس بيحسب percentiles مباشرة.</p>
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--acc2)"></div>
+      <h4 style="color:var(--acc2)">Summary 📋</h4>
+      <p>زي Histogram بس بيحسب quantiles مباشرة على الـ client.</p>
       <div class="ex">rpc_duration_seconds</div>
-      <p style="font-size:11px;color:var(--muted);margin-top:8px">⚠️ لو إيه؟ P50, P95, P99 latency</p>
+      <p style="font-size:11px;margin-top:8px">P50, P95, P99 latency مباشرة بدون حساب</p>
     </div>
   </div>
-  <div class="snote" style="margin-top:16px">
-    <div class="sntitle">💬 اشرح الفرق بين Counter وGauge كده</div>
-    "Counter زي عداد عدد خطوات الـ treadmill — بيزيد بس ومش بيرجع. Gauge زي مقياس السرعة — ممكن يزيد وينقص بحرية."
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════
-     SLIDE 7 — الـ 4 Golden Signals
-══════════════════════════════════════════ -->
-<section class="slide" id="s7">
-  <div class="blob" style="width:500px;height:500px;background:var(--graf);top:-150px;left:-100px"></div>
-  <div class="snum">04 / 05 — Part B</div>
-  <h2 class="stitle">🌟 الـ 4 Golden Signals</h2>
-  <div class="sline" style="width:80px;background:var(--graf2)"></div>
-  <div class="cards4">
-    <div class="gsig">
-      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#fc8181,#e53e3e)"></div>
-      <div class="gnum">01</div>
-      <span class="gico">⏱️</span>
-      <h4 style="color:#fc8181">Latency</h4>
-      <p>الطلب بياخد كام وقت حتى يرجع رد؟<br>لازم تفرّق بين الطلبات الناجحة والفاشلة.</p>
-      <div class="gq">"ليه الصفحة بطيئة؟"</div>
-      <div class="gcode">histogram_quantile(0.99,<br>rate(request_duration_seconds_bucket[5m]))</div>
+  <div class="snote">
+    <div class="st">💬 كيف تشرحها</div>
+    <div class="bilang">
+      <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>Counter زي عداد خطوات الـ treadmill — بيزيد بس ومش بيرجع. Gauge زي مقياس السرعة — يزيد وينقص بحرية. Histogram زي كاميرا السرعة بيوزع القيم على فئات (0-50, 50-100, +100).</div>
+      <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>Counter = treadmill step counter — only goes up, never resets. Gauge = speedometer — goes up and down freely. Histogram = speed camera that groups values into buckets (0-50, 50-100, 100+ km/h).</div>
     </div>
-    <div class="gsig">
-      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#63b3ed,#3182ce)"></div>
-      <div class="gnum">02</div>
-      <span class="gico">📶</span>
-      <h4 style="color:#63b3ed">Traffic</h4>
-      <p>كام request بيجي في الثانية؟<br>بيحدد حجم الـ load على النظام.</p>
-      <div class="gq">"قد إيه الضغط على السيرفر؟"</div>
-      <div class="gcode">rate(http_requests_total[5m])</div>
-    </div>
-    <div class="gsig">
-      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#fc8181,#e6522c)"></div>
-      <div class="gnum">03</div>
-      <span class="gico">❌</span>
-      <h4 style="color:#ff7c52">Errors</h4>
-      <p>كام request فشل؟<br>نسبة الـ 5xx من إجمالي الطلبات.</p>
-      <div class="gq">"في مشكلة في التطبيق؟"</div>
-      <div class="gcode">rate(errors_total[5m]) /<br>rate(requests_total[5m])</div>
-    </div>
-    <div class="gsig">
-      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#9f7aea,#805ad5)"></div>
-      <div class="gnum">04</div>
-      <span class="gico">🌡️</span>
-      <h4 style="color:#9f7aea">Saturation</h4>
-      <p>السيرفر اتملى لحده؟<br>CPU وRAM وDisk وConnections.</p>
-      <div class="gq">"السيرفر هيتعب؟"</div>
-      <div class="gcode">node_memory_Active_bytes /<br>node_memory_MemTotal_bytes</div>
-    </div>
-  </div>
-  <div class="snote" style="margin-top:14px">
-    <div class="sntitle">💬 اشرح الـ 4 Golden Signals كده</div>
-    "زي ما الدكتور بيقيس ضغطك وسكرك ودرجة حرارتك وعدد ضربات قلبك — الـ 4 golden signals هم 'فحص طب' لأي سيرفيس. بيديك صورة كاملة عن الصحة."
   </div>
 </section>
 
-<!-- ══════════════════════════════════════════
-     SLIDE 8 — PromQL
-══════════════════════════════════════════ -->
-<section class="slide" id="s8">
-  <div class="blob" style="width:400px;height:400px;background:var(--accent);top:-100px;right:-60px"></div>
-  <div class="snum">04 / 05 — Part C</div>
-  <h2 class="stitle" style="color:var(--accent)">🔎 PromQL — لغة الاستعلام</h2>
-  <div class="sline" style="width:80px;background:var(--accent)"></div>
+<!-- ══ S10: Labels ══ -->
+<section class="slide" id="s10">
+  <div class="blob" style="width:400px;height:400px;background:var(--prom);top:-100px;left:-80px"></div>
+  <h2 class="stitle" style="color:var(--prom2)">🏷️ Labels — قوة Prometheus الحقيقية</h2>
+  <div class="sline" style="width:70px;background:var(--prom2)"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>إيه هي الـ Labels؟</h3>
+      <p>Labels هي <strong style="color:var(--text)">metadata بتضيفها على الـ metric</strong> عشان تفرّق بين instances مختلفة من نفس الـ metric.</p>
+      <p>من غير labels، مش هتعرف الـ 500 errors دي جاية من فين — من الـ login endpoint ولا الـ payment؟</p>
+      <ul class="dlist">
+        <li><span class="li">🏷️</span><span>بتضيفها بين {} مع الـ metric name</span></li>
+        <li><span class="li">🔍</span><span>تقدر تفلتر بيها في PromQL</span></li>
+        <li><span class="li">⚠️</span><span>كل combination جديدة من labels = time series جديدة (label cardinality)</span></li>
+        <li><span class="li">📌</span><span>اختار labels ثابتة — متحطش user_id كـ label!</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="code">
+<span class="cc"># بدون labels — مش عارف إيه اللي حصل</span><br>
+<span class="cs">http_errors_total</span> <span class="cv">45</span><br>
+<br>
+<span class="cc"># مع labels — صورة واضحة</span><br>
+<span class="cs">http_errors_total</span>{<br>
+&nbsp;&nbsp;<span class="ck">method</span>=<span class="cv">"POST"</span>,<br>
+&nbsp;&nbsp;<span class="ck">endpoint</span>=<span class="cv">"/api/payment"</span>,<br>
+&nbsp;&nbsp;<span class="ck">status_code</span>=<span class="cv">"500"</span>,<br>
+&nbsp;&nbsp;<span class="ck">service</span>=<span class="cv">"checkout-service"</span>,<br>
+&nbsp;&nbsp;<span class="ck">env</span>=<span class="cv">"production"</span><br>
+} <span class="cv">38</span><br>
+<br>
+<span class="cc"># الـ 38 error كلهم في payment! هنروح هناك</span>
+      </div>
+      <div class="snote" style="margin-top:12px">
+        <div class="st">⚠️ تحذير مهم / Warning</div>
+        <div class="bilang">
+          <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>متستخدمش قيم dynamic زي user_id أو request_id كـ labels — هيعمل millions of time series وPrometheus هيتعب جداً (cardinality explosion)</div>
+          <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>Never use dynamic values like user_id or request_id as labels — this creates millions of unique time series and will crash Prometheus. This is called "cardinality explosion".</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S11: PromQL ══ -->
+<section class="slide" id="s11">
+  <div class="blob" style="width:400px;height:400px;background:var(--acc);top:-100px;right:-60px"></div>
+  <h2 class="stitle" style="color:var(--acc)">🔎 PromQL — لغة الاستعلام</h2>
+  <div class="sline" style="width:70px;background:var(--acc)"></div>
   <div class="dlay">
     <div class="dleft">
       <h3>إيه هي PromQL؟</h3>
-      <p>PromQL (Prometheus Query Language) هي اللغة اللي بتستخدمها عشان تسأل Prometheus أسئلة عن البيانات — زي SQL بالنسبة لقواعد البيانات العادية.</p>
+      <p>PromQL (Prometheus Query Language) — اللغة اللي بتسأل بيها Prometheus عن البيانات. زي SQL للـ databases العادية.</p>
       <ul class="dlist">
-        <li><span class="li">🏷️</span><span><strong style="color:var(--text)">Labels</strong> — بتفلتر النتايج بـ {method="GET"}</span></li>
-        <li><span class="li">⏱️</span><span><strong style="color:var(--text)">Range</strong> — بتحدد الفترة الزمنية [5m] أو [1h]</span></li>
-        <li><span class="li">📐</span><span><strong style="color:var(--text)">Functions</strong> — rate(), sum(), avg(), max()</span></li>
-        <li><span class="li">➕</span><span><strong style="color:var(--text)">Operators</strong> — بتعمل حسابات بين metrics</span></li>
+        <li><span class="li">🏷️</span><span><strong style="color:var(--text)">Selectors</strong> — فلتر بالـ labels {method="GET"}</span></li>
+        <li><span class="li">⏱️</span><span><strong style="color:var(--text)">Range Vectors</strong> — فترة زمنية [5m] أو [1h]</span></li>
+        <li><span class="li">📐</span><span><strong style="color:var(--text)">Functions</strong> — rate(), irate(), increase(), sum()</span></li>
+        <li><span class="li">➕</span><span><strong style="color:var(--text)">Aggregations</strong> — sum by(), avg by(), topk()</span></li>
       </ul>
     </div>
-    <div>
-      <div class="card" style="padding:22px">
-        <div class="top-bar" style="background:var(--accent)"></div>
-        <h3 style="color:var(--accent);margin-bottom:16px;font-size:15px">أمثلة عملية</h3>
-        <div class="pql-row">
-          <div class="pql-q">http_requests_total</div>
-          <div class="pql-d">كل الـ requests من أول ما السيرفر اشتغل</div>
-        </div>
-        <div class="pql-row">
-          <div class="pql-q">rate(http_requests_total[5m])</div>
-          <div class="pql-d">معدل الطلبات في آخر 5 دقايق (requests/second)</div>
-        </div>
-        <div class="pql-row">
-          <div class="pql-q">sum(rate(errors[5m])) / sum(rate(requests[5m]))</div>
-          <div class="pql-d">نسبة الأخطاء من إجمالي الطلبات</div>
-        </div>
-        <div class="pql-row">
-          <div class="pql-q">http_requests_total{status="500"}</div>
-          <div class="pql-d">فلترة — عارض بس الـ 500 errors</div>
-        </div>
-        <div class="pql-row">
-          <div class="pql-q">topk(5, rate(requests[1h]))</div>
-          <div class="pql-d">أعلى 5 services في عدد الطلبات</div>
-        </div>
+    <div class="card" style="padding:20px">
+      <div class="tb" style="background:var(--acc)"></div>
+      <h3 style="color:var(--acc);margin-bottom:14px;font-size:14px">أمثلة عملية</h3>
+      <div class="prow">
+        <div class="pq">rate(http_requests_total[5m])</div>
+        <div class="pd">معدل الطلبات/ثانية في آخر 5 دقايق</div>
       </div>
-      <div class="snote" style="margin-top:14px">
-        <div class="sntitle">💬 اشرحها كده</div>
-        "PromQL زي ما بتكتب 'جيب الطلبات اللي فشلت في آخر 5 دقايق' — بس بلغة Prometheus"
+      <div class="prow">
+        <div class="pq">sum(rate(errors[5m])) / sum(rate(req[5m]))</div>
+        <div class="pd">نسبة الأخطاء من إجمالي الطلبات</div>
+      </div>
+      <div class="prow">
+        <div class="pq">http_req{status=~"5.."}</div>
+        <div class="pd">فلتر regex — كل الـ 5xx errors</div>
+      </div>
+      <div class="prow">
+        <div class="pq">topk(5, rate(requests[1h]))</div>
+        <div class="pd">أعلى 5 services في الضغط</div>
+      </div>
+      <div class="prow">
+        <div class="pq">histogram_quantile(0.99, rate(req_duration_bucket[5m]))</div>
+        <div class="pd">P99 latency — أبطأ 1% من الطلبات</div>
+      </div>
+      <div class="prow">
+        <div class="pq">increase(errors_total[1h])</div>
+        <div class="pd">كام error حصل في آخر ساعة</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ══════════════════════════════════════════
-     SLIDE 9 — Alertmanager
-══════════════════════════════════════════ -->
-<section class="slide" id="s9">
+<!-- ══ S12: 4 Golden Signals ══ -->
+<section class="slide" id="s12">
+  <div class="blob" style="width:450px;height:450px;background:var(--graf);top:-140px;left:-100px"></div>
+  <h2 class="stitle">🌟 الـ 4 Golden Signals</h2>
+  <div class="sline" style="width:70px;background:var(--graf2)"></div>
+  <div class="g4">
+    <div class="gsig">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#fc8181,#e53e3e)"></div>
+      <div class="gnum">01</div>
+      <span class="gico">⏱️</span>
+      <h4 style="color:#fc8181">Latency</h4>
+      <p>الطلب بياخد كام وقت؟ فرّق بين الناجحة والفاشلة.</p>
+      <div class="gq">"ليه الصفحة بطيئة؟"</div>
+      <div class="gc">histogram_quantile(0.99, rate(req_duration_bucket[5m]))</div>
+    </div>
+    <div class="gsig">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#63b3ed,#3182ce)"></div>
+      <div class="gnum">02</div>
+      <span class="gico">📶</span>
+      <h4 style="color:#63b3ed">Traffic</h4>
+      <p>كام request في الثانية؟ حجم الـ load على النظام.</p>
+      <div class="gq">"قد إيه الضغط؟"</div>
+      <div class="gc">rate(http_requests_total[5m])</div>
+    </div>
+    <div class="gsig">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#fc8181,#e6522c)"></div>
+      <div class="gnum">03</div>
+      <span class="gico">❌</span>
+      <h4 style="color:#ff7c52">Errors</h4>
+      <p>كام request فشل؟ نسبة الـ 5xx من الكل.</p>
+      <div class="gq">"في مشكلة في الـ API؟"</div>
+      <div class="gc">rate(err[5m]) / rate(req[5m])</div>
+    </div>
+    <div class="gsig">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#9f7aea,#805ad5)"></div>
+      <div class="gnum">04</div>
+      <span class="gico">🌡️</span>
+      <h4 style="color:#9f7aea">Saturation</h4>
+      <p>السيرفر اتملى لحده؟ CPU وRAM وDisk.</p>
+      <div class="gq">"السيرفر هيتعب؟"</div>
+      <div class="gc">node_memory_Active_bytes / node_memory_MemTotal_bytes</div>
+    </div>
+  </div>
+  <div class="snote" style="margin-top:12px">
+    <div class="st">💬 كيف تشرحها</div>
+    <div class="bilang">
+      <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>"زي ما الدكتور بيقيس ضغطك وسكرك وحرارتك ودرجات قلبك — الـ 4 Golden Signals هم 'فحص طب' شامل لأي service. جاية من Google SRE Book."</div>
+      <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>"Just like a doctor checks your blood pressure, sugar, temperature and heartbeat — the 4 Golden Signals are a complete health check for any service. Concept from Google's SRE Book."</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S13: Alertmanager ══ -->
+<section class="slide" id="s13">
   <div class="blob" style="width:400px;height:400px;background:var(--prom);bottom:-100px;left:-80px"></div>
-  <div class="snum">04 / 05 — Part D</div>
   <h2 class="stitle" style="color:var(--prom2)">🔔 Alertmanager — نظام التنبيهات</h2>
-  <div class="sline" style="width:80px;background:var(--prom2)"></div>
+  <div class="sline" style="width:70px;background:var(--prom2)"></div>
   <div class="dlay">
     <div class="dleft">
       <h3>إزاي بيشتغل؟</h3>
-      <p>Alertmanager هو الجزء اللي بيتابع الـ rules اللي أنت تحددها — لو حاجة وصلت لحد معين، بيبعتلك notification.</p>
+      <p>بتعرّف rules في ملف منفصل — Prometheus بيتحقق منها كل evaluation_interval. لو الشرط اتحقق، يبعت للـ Alertmanager اللي بدوره يبعت الـ notification.</p>
       <ul class="dlist">
-        <li><span class="li">📋</span><span><strong style="color:var(--text)">تعرّف القاعدة</strong> — "لو الـ errors زادت عن 5% لمدة 5 دقايق"</span></li>
-        <li><span class="li">⏰</span><span><strong style="color:var(--text)">Prometheus يراقب</strong> — بيتحقق من القاعدة كل scrape interval</span></li>
-        <li><span class="li">🔔</span><span><strong style="color:var(--text)">Alert يتشغّل</strong> — Alertmanager يشوف ويبعت الـ notification</span></li>
-        <li><span class="li">📲</span><span><strong style="color:var(--text)">Notification تتبعت</strong> — Slack, Email, PagerDuty, SMS</span></li>
+        <li><span class="li">📋</span><span>تعرّف الـ rule — "error rate > 5% لمدة 5 دقايق"</span></li>
+        <li><span class="li">⏳</span><span>الـ <code style="color:var(--acc)">for</code> field — يستنى كام وقت قبل ما يبعت</span></li>
+        <li><span class="li">🔔</span><span>Alertmanager يستقبل ويبعت notification</span></li>
+        <li><span class="li">📱</span><span>Slack, Email, PagerDuty, OpsGenie, Webhook</span></li>
+        <li><span class="li">🔕</span><span>Silences — تعمل snooze للـ alert وقت maintenance</span></li>
       </ul>
-      <div class="abox" style="margin-top:16px">
-        <div class="ahead">🚨 مثال Alert حقيقي</div>
-        "High Error Rate on Production!" — نسبة الـ errors وصلت 8% في آخر 5 دقايق على server-prod-1
+      <div class="abox" style="margin-top:14px">
+        <div class="ah">🚨 مثال Alert حقيقي على Slack</div>
+        [CRITICAL] High Error Rate — نسبة الأخطاء وصلت 8.3% في آخر 5 دقايق على checkout-service في production
       </div>
     </div>
     <div>
-      <div class="code" style="font-size:12px">
-<span class="cc"># rules.yml — تعريف الـ alert rules</span><br>
-<br>
+      <div class="code" style="font-size:11px">
+<span class="cc"># alert-rules.yml</span><br>
 <span class="ck">groups:</span><br>
-&nbsp;&nbsp;- <span class="ck">name:</span> <span class="cv">production-alerts</span><br>
+&nbsp;&nbsp;- <span class="ck">name:</span> <span class="cv">production</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">rules:</span><br>
 <br>
 &nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">alert:</span> <span class="cv">HighErrorRate</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">expr:</span> <span class="cs">rate(http_errors_total[5m]) / rate(http_requests_total[5m]) > 0.05</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">for:</span> <span class="cv">5m</span> &nbsp;&nbsp;<span class="cc"># لازم يفضل هيك لمدة 5 دقايق قبل ما يبعت</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">expr:</span> <span class="cs">rate(http_errors_total[5m])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/ rate(http_requests_total[5m]) > 0.05</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">for:</span> <span class="cv">5m</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">labels:</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">severity:</span> <span class="cv">critical</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">annotations:</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">summary:</span> <span class="cv">"نسبة الأخطاء وصلت {{ $value | humanize }}%"</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">summary:</span> <span class="cv">"Error rate: {{ $value | humanizePercentage }}"</span><br>
 <br>
-&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">alert:</span> <span class="cv">HighCPUUsage</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">alert:</span> <span class="cv">HighCPU</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">expr:</span> <span class="cs">cpu_usage_percent > 85</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">for:</span> <span class="cv">10m</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">annotations:</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">summary:</span> <span class="cv">"CPU عالي على {{ $labels.instance }}"</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">summary:</span> <span class="cv">"CPU على {{ $labels.instance }}"</span>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ══════════════════════════════════════════
-     SLIDE 10 — إزاي عملناه (Setup كامل)
-══════════════════════════════════════════ -->
-<section class="slide" id="s10">
-  <div class="blob" style="width:400px;height:400px;background:var(--accent2);top:-100px;right:-80px"></div>
-  <div class="snum">05 / 05</div>
-  <h2 class="stitle">🛠️ إزاي عملنا Setup النظام؟</h2>
-  <div class="sline" style="width:80px;background:var(--accent2)"></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;width:100%;max-width:940px">
-    <div class="code" style="font-size:11.5px">
-<span class="cc"># docker-compose.yml — كل حاجة في مكان واحد</span><br>
+<!-- ══ S14: Recording Rules ══ -->
+<section class="slide" id="s14">
+  <div class="blob" style="width:380px;height:380px;background:var(--yel);top:-100px;right:-80px;opacity:.1"></div>
+  <h2 class="stitle" style="color:var(--yel)">⚡ Recording Rules — Pre-computed Queries</h2>
+  <div class="sline" style="width:70px;background:var(--yel)"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>إيه هي؟</h3>
+      <p>Recording Rules بتخليك <strong style="color:var(--text)">تحسب استعلامات PromQL معقدة مسبقاً</strong> وتخزّن نتيجتها كـ metric جديدة.</p>
+      <p>بدل ما Grafana يحسب نفس الاستعلام المعقد كل مرة الـ dashboard بيفتح — تحسبه مرة وتخزنه.</p>
+      <ul class="dlist">
+        <li><span class="li">⚡</span><span>بتسرّع الـ dashboard بشكل ملحوظ</span></li>
+        <li><span class="li">♻️</span><span>تقدر تعيد استخدامها في أكتر من dashboard</span></li>
+        <li><span class="li">💾</span><span>بتقلل الـ load على Prometheus</span></li>
+        <li><span class="li">📐</span><span>مفيدة جداً للـ alerting rules المعقدة</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="code">
+<span class="cc"># recording-rules.yml</span><br>
+<span class="ck">groups:</span><br>
+&nbsp;&nbsp;- <span class="ck">name:</span> <span class="cv">precomputed</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">interval:</span> <span class="cv">30s</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">rules:</span><br>
 <br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="cc"># بدل ما تكتب الاستعلام ده كل مرة:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">record:</span> <span class="cv">job:http_requests:rate5m</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">expr:</span> <span class="cs">rate(http_requests_total[5m])</span><br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">record:</span> <span class="cv">job:http_errors:rate5m</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">expr:</span> <span class="cs">rate(http_errors_total[5m])</span><br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="cc"># دلوقتي تستخدمها ببساطة:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">record:</span> <span class="cv">job:error_rate:ratio5m</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">expr:</span> <span class="cs">job:http_errors:rate5m<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/ job:http_requests:rate5m</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S15: Service Discovery ══ -->
+<section class="slide" id="s15">
+  <div class="blob" style="width:380px;height:380px;background:var(--acc2);bottom:-100px;right:-60px"></div>
+  <h2 class="stitle" style="color:var(--acc2)">🔍 Service Discovery — اكتشاف تلقائي</h2>
+  <div class="sline" style="width:70px;background:var(--acc2)"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>المشكلة مع static_configs</h3>
+      <p>لو عندك 50 سيرفر ومضيف واحد جديد كل يوم — مش هتكتب كل مرة في prometheus.yml يدوياً.</p>
+      <p><strong style="color:var(--text)">Service Discovery</strong> بيخلي Prometheus يكتشف الـ targets تلقائياً من مصادر مختلفة.</p>
+      <ul class="dlist">
+        <li><span class="li">☸️</span><span><strong style="color:var(--text)">kubernetes_sd</strong> — يكتشف pods تلقائياً</span></li>
+        <li><span class="li">☁️</span><span><strong style="color:var(--text)">ec2_sd</strong> — يكتشف AWS EC2 instances</span></li>
+        <li><span class="li">🔧</span><span><strong style="color:var(--text)">consul_sd</strong> — من Consul service registry</span></li>
+        <li><span class="li">📁</span><span><strong style="color:var(--text)">file_sd</strong> — من ملف JSON/YAML يتحدث تلقائياً</span></li>
+        <li><span class="li">🐳</span><span><strong style="color:var(--text)">docker_sd</strong> — يكتشف containers من Docker daemon</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="code" style="font-size:11px">
+<span class="cc"># prometheus.yml — kubernetes service discovery</span><br>
+<span class="ck">scrape_configs:</span><br>
+&nbsp;&nbsp;- <span class="ck">job_name:</span> <span class="cv">'kubernetes-pods'</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">kubernetes_sd_configs:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">role:</span> <span class="cv">pod</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">relabel_configs:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">source_labels:</span> [<span class="cv">__meta_kubernetes_pod_annotation_prometheus_io_scrape</span>]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">action:</span> <span class="cv">keep</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">regex:</span> <span class="cv">true</span><br>
+<br>
+<span class="cc"># وفي الـ Pod أضف annotation:</span><br>
+<span class="ck">annotations:</span><br>
+&nbsp;&nbsp;<span class="cv">prometheus.io/scrape:</span> <span class="cv">"true"</span><br>
+&nbsp;&nbsp;<span class="cv">prometheus.io/port:</span> <span class="cv">"8080"</span><br>
+&nbsp;&nbsp;<span class="cv">prometheus.io/path:</span> <span class="cv">"/metrics"</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S16: Setup ══ -->
+<section class="slide" id="s16">
+  <div class="blob" style="width:400px;height:400px;background:var(--acc2);top:-100px;right:-80px"></div>
+  <h2 class="stitle">🛠️ Setup كامل بـ Docker Compose</h2>
+  <div class="sline" style="width:70px;background:var(--acc2)"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;width:100%;max-width:940px">
+    <div class="code" style="font-size:11px">
+<span class="cc"># docker-compose.yml</span><br>
 <span class="ck">services:</span><br>
 &nbsp;&nbsp;<span class="ck">prometheus:</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">image:</span> <span class="cv">prom/prometheus:latest</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">ports:</span> [<span class="cv">"9090:9090"</span>]<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">volumes:</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="cv">./prometheus.yml:/etc/prometheus/prometheus.yml</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="cv">prom_data:/prometheus</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">command:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="cv">'--storage.tsdb.retention.time=30d'</span><br>
 <br>
 &nbsp;&nbsp;<span class="ck">grafana:</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">image:</span> <span class="cv">grafana/grafana:latest</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">ports:</span> [<span class="cv">"3000:3000"</span>]<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">environment:</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">GF_SECURITY_ADMIN_PASSWORD=</span><span class="cv">secret</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">GF_SECURITY_ADMIN_PASSWORD</span>=<span class="cv">secret123</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">volumes:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="cv">grafana_data:/var/lib/grafana</span><br>
 <br>
 &nbsp;&nbsp;<span class="ck">node-exporter:</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">image:</span> <span class="cv">prom/node-exporter:latest</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">ports:</span> [<span class="cv">"9100:9100"</span>]<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="cc"># بيجمع metrics السيرفر: CPU, RAM, Disk</span>
+<br>
+&nbsp;&nbsp;<span class="ck">alertmanager:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">image:</span> <span class="cv">prom/alertmanager:latest</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">ports:</span> [<span class="cv">"9093:9093"</span>]<br>
+<br>
+<span class="ck">volumes:</span><br>
+&nbsp;&nbsp;<span class="cv">prom_data:</span> {}<br>
+&nbsp;&nbsp;<span class="cv">grafana_data:</span> {}
     </div>
     <div>
-      <div class="card" style="padding:22px;margin-bottom:14px">
-        <div class="top-bar" style="background:var(--accent2)"></div>
-        <h3 style="color:var(--accent2);margin-bottom:14px;font-size:15px">📝 خطوات الـ Setup بالترتيب</h3>
-        <ul class="dlist" style="font-size:13px">
-          <li><span class="li">1️⃣</span><span>شغّل Prometheus وGrafana بـ Docker Compose</span></li>
-          <li><span class="li">2️⃣</span><span>أضف مكتبة <code style="color:var(--accent)">prom-client</code> في تطبيقك</span></li>
-          <li><span class="li">3️⃣</span><span>عمل expose لـ <code style="color:var(--accent)">/metrics</code> endpoint</span></li>
-          <li><span class="li">4️⃣</span><span>أضف تطبيقك في prometheus.yml كـ scrape target</span></li>
-          <li><span class="li">5️⃣</span><span>افتح Grafana على port 3000 وأضف Prometheus كـ data source</span></li>
-          <li><span class="li">6️⃣</span><span>اعمل dashboard أو import واحد جاهز</span></li>
+      <div class="card" style="padding:18px;margin-bottom:14px">
+        <div class="tb" style="background:var(--acc2)"></div>
+        <h3 style="color:var(--acc2);margin-bottom:12px;font-size:14px">📝 خطوات الـ Setup</h3>
+        <ul class="dlist" style="font-size:12.5px">
+          <li><span class="li">1️⃣</span><span>شغّل الـ stack كله بـ <code style="color:var(--acc)">docker-compose up -d</code></span></li>
+          <li><span class="li">2️⃣</span><span>أضف <code style="color:var(--acc)">prom-client</code> في تطبيقك وعمل expose لـ <code style="color:var(--acc)">/metrics</code></span></li>
+          <li><span class="li">3️⃣</span><span>أضف target في prometheus.yml</span></li>
+          <li><span class="li">4️⃣</span><span>افتح Grafana :3000 — أضف Prometheus كـ data source</span></li>
+          <li><span class="li">5️⃣</span><span>Import dashboard جاهز — ID <code style="color:var(--acc)">1860</code> للـ node exporter</span></li>
+          <li><span class="li">6️⃣</span><span>اعمل alert rules واربطها بـ Alertmanager</span></li>
         </ul>
       </div>
-      <div class="code" style="font-size:11.5px">
-<span class="cc">// تطبيق Node.js — expose الـ metrics</span><br>
+      <div class="verdict">
+        <div class="vt">💡 Pro Tip</div>
+        <p>استخدم <code style="color:var(--acc)">--storage.tsdb.retention.time=30d</code> عشان تخزن البيانات لـ 30 يوم بدل الـ 15 الافتراضي</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S17: Code Integration ══ -->
+<section class="slide" id="s17">
+  <div class="blob" style="width:400px;height:400px;background:var(--grn);bottom:-100px;left:-80px;opacity:.12"></div>
+  <h2 class="stitle" style="color:var(--grn)">💻 تكامل مع التطبيق — Node.js مثال</h2>
+  <div class="sline" style="width:70px;background:var(--grn)"></div>
+  <div class="dlay">
+    <div>
+      <div class="code" style="font-size:11px;margin-bottom:12px">
 <span class="cf">const</span> client = <span class="cf">require</span>(<span class="cv">'prom-client'</span>);<br>
-client.collectDefaultMetrics(); <span class="cc">// CPU, RAM تلقائياً</span><br>
+<span class="cc">// جمع default metrics: CPU, RAM, event loop</span><br>
+client.collectDefaultMetrics({ <span class="ck">prefix:</span> <span class="cv">'myapp_'</span> });<br>
 <br>
+<span class="cc">// Counter — requests</span><br>
 <span class="cf">const</span> httpReqs = <span class="cf">new</span> client.Counter({<br>
 &nbsp;&nbsp;<span class="ck">name:</span> <span class="cv">'http_requests_total'</span>,<br>
-&nbsp;&nbsp;<span class="ck">labelNames:</span> [<span class="cv">'method'</span>, <span class="cv">'status'</span>]<br>
+&nbsp;&nbsp;<span class="ck">help:</span> <span class="cv">'Total HTTP requests'</span>,<br>
+&nbsp;&nbsp;<span class="ck">labelNames:</span> [<span class="cv">'method'</span>, <span class="cv">'route'</span>, <span class="cv">'status'</span>]<br>
 });<br>
 <br>
+<span class="cc">// Histogram — response time</span><br>
+<span class="cf">const</span> httpDuration = <span class="cf">new</span> client.Histogram({<br>
+&nbsp;&nbsp;<span class="ck">name:</span> <span class="cv">'http_request_duration_seconds'</span>,<br>
+&nbsp;&nbsp;<span class="ck">help:</span> <span class="cv">'HTTP request duration'</span>,<br>
+&nbsp;&nbsp;<span class="ck">buckets:</span> [0.1, 0.5, 1, 2, 5]<br>
+});
+      </div>
+    </div>
+    <div>
+      <div class="code" style="font-size:11px;margin-bottom:12px">
+<span class="cc">// Middleware — بيسجل كل request</span><br>
+app.use((req, res, next) => {<br>
+&nbsp;&nbsp;<span class="cf">const</span> end = httpDuration.startTimer();<br>
+&nbsp;&nbsp;res.on(<span class="cv">'finish'</span>, () => {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;httpReqs.inc({<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">method:</span> req.method,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">route:</span> req.route?.path || req.path,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">status:</span> res.statusCode<br>
+&nbsp;&nbsp;&nbsp;&nbsp;});<br>
+&nbsp;&nbsp;&nbsp;&nbsp;end({ <span class="ck">method:</span> req.method, <span class="ck">status:</span> res.statusCode });<br>
+&nbsp;&nbsp;});<br>
+&nbsp;&nbsp;next();<br>
+});<br>
+<br>
+<span class="cc">// Endpoint الـ Prometheus بيسحب منه</span><br>
 app.get(<span class="cv">'/metrics'</span>, <span class="cf">async</span> (req, res) => {<br>
 &nbsp;&nbsp;res.set(<span class="cv">'Content-Type'</span>, client.register.contentType);<br>
 &nbsp;&nbsp;res.end(<span class="cf">await</span> client.register.metrics());<br>
@@ -615,73 +957,154 @@ app.get(<span class="cv">'/metrics'</span>, <span class="cf">async</span> (req, 
   </div>
 </section>
 
-<!-- ══════════════════════════════════════════
-     SLIDE 11 — مقارنة مع البدائل
-══════════════════════════════════════════ -->
-<section class="slide" id="s11">
-  <div class="blob" style="width:400px;height:400px;background:var(--yellow);top:-100px;left:-80px;opacity:.07"></div>
-  <div class="snum">Bonus</div>
-  <h2 class="stitle">⚖️ Prometheus vs البدائل</h2>
-  <div class="sline" style="width:80px;background:var(--yellow)"></div>
-  <table class="tbl">
-    <thead>
-      <tr>
-        <th>المعيار</th>
-        <th style="color:var(--prom2)">🔥 Prometheus + Grafana</th>
-        <th style="color:#4299e1">☁️ Datadog</th>
-        <th style="color:#48bb78">📡 AWS CloudWatch</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>التكلفة</strong></td>
-        <td style="color:var(--green)">✅ مجاني — open source</td>
-        <td style="color:var(--red)">💸 $15-23 لكل host/شهر</td>
-        <td>⚠️ بيتحسب على الـ usage</td>
-      </tr>
-      <tr>
-        <td><strong>التحكم</strong></td>
-        <td style="color:var(--green)">✅ تحكم كامل — على سيرفراتك</td>
-        <td style="color:var(--muted)">SaaS — بياناتك على عندهم</td>
-        <td style="color:var(--muted)">مرتبط بـ AWS فقط</td>
-      </tr>
-      <tr>
-        <td><strong>سهولة الإعداد</strong></td>
-        <td>⚠️ بتحتاج إعداد يدوي</td>
-        <td style="color:var(--green)">✅ سهل جداً — install agent</td>
-        <td style="color:var(--green)">✅ موجود تلقائياً في AWS</td>
-      </tr>
-      <tr>
-        <td><strong>Retention</strong></td>
-        <td>⚠️ 15 يوم افتراضي (قابل للتمديد)</td>
-        <td style="color:var(--green)">✅ 15 شهر</td>
-        <td style="color:var(--green)">✅ قابل للتخصيص</td>
-      </tr>
-      <tr>
-        <td><strong>Dashboards</strong></td>
-        <td style="color:var(--green)">✅ Grafana — قوية جداً</td>
-        <td style="color:var(--green)">✅ ممتازة built-in</td>
-        <td>⚠️ محدودة نسبياً</td>
-      </tr>
-    </tbody>
-  </table>
-  <div class="snote" style="margin-top:16px">
-    <div class="sntitle">💬 لو سألوك: ليه اخترت Prometheus؟</div>
-    "لأنه open source ومش محتاج ندفع per-host، عندنا تحكم كامل في البيانات، والـ Grafana بتديك dashboards أقوى من أي حاجة تانية. في production scale كبير ده بيفرق كتير في التكلفة."
+<!-- ══ S18: Thanos ══ -->
+<section class="slide" id="s18">
+  <div class="blob" style="width:400px;height:400px;background:var(--acc);top:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:var(--acc)">🌌 Thanos — Prometheus على نطاق واسع</h2>
+  <div class="sline" style="width:70px;background:var(--acc)"></div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="tb" style="background:var(--mut)"></div>
+      <span class="ico">⚠️</span>
+      <h3 style="color:var(--yel)">مشاكل Prometheus العادي</h3>
+      <ul style="list-style:none;font-size:13px;color:var(--mut)">
+        <li style="padding:7px 0;border-bottom:1px solid var(--border)">• Retention افتراضي 15 يوم بس على الـ disk</li>
+        <li style="padding:7px 0;border-bottom:1px solid var(--border)">• مش بيعمل HA (High Availability) بسهولة</li>
+        <li style="padding:7px 0;border-bottom:1px solid var(--border)">• لو عندك أكتر من Prometheus instance — صعب تعمل query عليهم مع بعض</li>
+        <li style="padding:7px 0">• بيانات قديمة بتاخد disk كبير</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="tb" style="background:var(--acc)"></div>
+      <span class="ico">🚀</span>
+      <h3 style="color:var(--acc)">Thanos يحل المشاكل دي</h3>
+      <ul style="list-style:none;font-size:13px;color:var(--mut)">
+        <li style="padding:7px 0;border-bottom:1px solid var(--border)">• يرفع البيانات على S3/GCS/Azure Blob تلقائياً</li>
+        <li style="padding:7px 0;border-bottom:1px solid var(--border)">• Unlimited retention — بياناتك للأبد</li>
+        <li style="padding:7px 0;border-bottom:1px solid var(--border)">• Global query — استعلام على كل instances بنفس الوقت</li>
+        <li style="padding:7px 0">• HA بدون تعقيد — يدمج نتايج instances متشابهة</li>
+      </ul>
+    </div>
+  </div>
+  <div class="verdict">
+    <div class="vt">💡 متى تستخدم Thanos؟</div>
+    <p>لو عندك أكتر من Prometheus instance، أو عايز retention أكتر من شهر، أو عايز HA. للـ startups العادية — Prometheus لوحده كافي.</p>
   </div>
 </section>
 
-<!-- ══════════════════════════════════════════
-     SLIDE 12 — FINAL
-══════════════════════════════════════════ -->
+<!-- ══ S19: Best Practices ══ -->
+<section class="slide" id="s19">
+  <div class="blob" style="width:400px;height:400px;background:var(--grn);bottom:-100px;right:-80px;opacity:.12"></div>
+  <h2 class="stitle" style="color:var(--grn)">✅ Best Practices</h2>
+  <div class="sline" style="width:70px;background:var(--grn)"></div>
+  <div class="bp-grid">
+    <div class="bp">
+      <div class="bico">🏷️</div>
+      <div><h4>استخدم labels بحكمة</h4><p>ماتحطش user_id أو request_id كـ labels — هيتسبب في cardinality explosion وPrometheus هيبطأ</p></div>
+    </div>
+    <div class="bp">
+      <div class="bico">📐</div>
+      <div><h4>استخدم rate() مع Counter</h4><p>دايماً استخدم rate() أو increase() مع الـ Counters في الـ graphs — ماتعرضش الـ raw value</p></div>
+    </div>
+    <div class="bp">
+      <div class="bico">⚡</div>
+      <div><h4>Recording Rules للاستعلامات المعقدة</h4><p>أي query بياخد أكتر من ثانية في Grafana — اعمله recording rule وخزّن نتيجته كـ metric</p></div>
+    </div>
+    <div class="bp">
+      <div class="bico">🔔</div>
+      <div><h4>اجعل الـ alerts قابلة للتنفيذ</h4><p>كل alert لازم يكون معاه "runbook" — إيه اللي هتعمله لما تجيك؟ مش بس "CPU high"</p></div>
+    </div>
+    <div class="bp">
+      <div class="bico">📊</div>
+      <div><h4>Dashboard للـ 4 Golden Signals أولاً</h4><p>ابدأ بـ Latency, Traffic, Errors, Saturation — هم أهم حاجة قبل أي dashboard تاني</p></div>
+    </div>
+    <div class="bp">
+      <div class="bico">💾</div>
+      <div><h4>Persistence للـ Grafana</h4><p>اعمل volume لـ Grafana وPrometheus — لو الـ container اتوقف مش هتخسر الـ dashboards والبيانات</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S20: Comparison ══ -->
+<section class="slide" id="s20">
+  <div class="blob" style="width:400px;height:400px;background:var(--yel);top:-100px;left:-80px;opacity:.08"></div>
+  <h2 class="stitle">⚖️ Prometheus vs البدائل</h2>
+  <div class="sline" style="width:70px;background:var(--yel)"></div>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>المعيار</th>
+          <th style="color:var(--prom2)">🔥 Prometheus + Grafana</th>
+          <th style="color:#4299e1">☁️ Datadog</th>
+          <th style="color:#48bb78">📡 CloudWatch</th>
+          <th style="color:#9f7aea">🔮 New Relic</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>التكلفة</strong></td><td class="yes">مجاني — Open Source</td><td class="no">$15-23/host/شهر</td><td class="warn">بالـ usage</td><td class="no">$25/user/شهر</td></tr>
+        <tr><td><strong>الإعداد</strong></td><td class="warn">يدوي — يحتاج خبرة</td><td class="yes">سهل — agent فقط</td><td class="yes">تلقائي في AWS</td><td class="yes">سهل — agent</td></tr>
+        <tr><td><strong>التحكم</strong></td><td class="yes">كامل — on-premise</td><td class="warn">SaaS — عندهم</td><td class="warn">AWS فقط</td><td class="warn">SaaS — عندهم</td></tr>
+        <tr><td><strong>Retention</strong></td><td class="warn">15 يوم (Thanos ∞)</td><td class="yes">15 شهر</td><td class="yes">قابل للتخصيص</td><td class="yes">13 شهر</td></tr>
+        <tr><td><strong>Dashboards</strong></td><td class="yes">Grafana — الأقوى</td><td class="yes">ممتازة</td><td class="warn">محدودة</td><td class="yes">جيدة</td></tr>
+        <tr><td><strong>Open Source</strong></td><td class="yes">✅ كاملاً</td><td class="no">❌ مغلق</td><td class="no">❌ مغلق</td><td class="no">❌ مغلق</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="snote" style="margin-top:14px">
+    <div class="st">💬 لو سألوك: ليه اخترت Prometheus؟</div>
+    <div class="bilang">
+      <div class="ar"><span class="arlabel">🇪🇬 بالعربي</span>"لأنه open source ومجاني — مع scale كبير Datadog بيكلف آلاف الدولارات في الشهر. عندنا تحكم كامل في البيانات على سيرفراتنا، وGrafana أقوى من أي visualization tool تاني."</div>
+      <div class="en"><span class="elabel">🇬🇧 IN ENGLISH</span>"Because it's open source and free — at scale, Datadog costs thousands of dollars per month. We have full control over our data on our own servers, and Grafana is more powerful than any other visualization tool."</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S21: Common Questions ══ -->
+<section class="slide" id="s21">
+  <div class="blob" style="width:400px;height:400px;background:var(--prom);top:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:var(--prom2)">❓ أسئلة متوقعة في الـ Interview</h2>
+  <div class="sline" style="width:70px;background:var(--prom2)"></div>
+  <div class="g2">
+    <div>
+      <div class="abox" style="margin-bottom:12px">
+        <div class="ah">Q: إيه الفرق بين Monitoring وObservability؟</div>
+        Monitoring = تشوف حاجات عارفها مسبقاً (metrics). Observability = تفهم أي مشكلة حتى لو مش متوقعاها (metrics + logs + traces). Prometheus = Monitoring. Jaeger/Zipkin = Tracing.
+      </div>
+      <div class="abox" style="margin-bottom:12px">
+        <div class="ah">Q: إيه الـ scrape interval المناسب؟</div>
+        15 ثانية standard. لو عندك حاجة critical ممكن 5 ثواني. مش أقل من كده — هيرهق Prometheus والتطبيق.
+      </div>
+      <div class="abox">
+        <div class="ah">Q: إزاي تتعامل مع الـ Prometheus في Production؟</div>
+        Thanos لـ long-term storage + HA. Mimir كبديل. استخدم Helm charts لـ Kubernetes. احتفظ بـ backup للـ rules والـ dashboards.
+      </div>
+    </div>
+    <div>
+      <div class="abox" style="margin-bottom:12px">
+        <div class="ah">Q: إيه الـ cardinality وليه خطرة؟</div>
+        عدد الـ unique time series. كل label value جديدة = time series جديدة. label كـ user_id مع مليون user = مليون time series → Prometheus هيتعب.
+      </div>
+      <div class="abox" style="margin-bottom:12px">
+        <div class="ah">Q: إيه الفرق بين Histogram وSummary؟</div>
+        Histogram: buckets محددة مسبقاً، تحسب percentiles في Grafana. Summary: يحسب quantiles على الـ client، مش ممكن تعمل aggregation بين instances.
+      </div>
+      <div class="abox">
+        <div class="ah">Q: ليه pull model أحسن من push؟</div>
+        لأن Prometheus هو اللي بيتحكم في timing. لو التطبيق وقع — فوراً بتعرف. لو push — مش هتعرف الفرق بين "وقع" و"مش بيبعت بيانات".
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S22: Final ══ -->
 <section class="slide" id="sfinal">
-  <div class="blob" style="width:550px;height:550px;background:var(--prom);top:-180px;right:-120px"></div>
-  <div class="blob" style="width:400px;height:400px;background:var(--graf);bottom:-120px;left:-80px;animation-delay:2.5s"></div>
-  <h2 class="stitle" style="font-size:clamp(16px,2vw,26px);margin-bottom:4px">الخلاصة في جملتين</h2>
+  <div class="blob" style="width:500px;height:500px;background:var(--prom);top:-180px;right:-120px"></div>
+  <div class="blob" style="width:380px;height:380px;background:var(--graf);bottom:-120px;left:-80px;animation-delay:2.5s"></div>
+  <h2 class="stitle" style="font-size:clamp(16px,2.2vw,26px);margin-bottom:4px">الخلاصة في جملة</h2>
   <div class="sline" style="width:60px;background:linear-gradient(90deg,var(--prom),var(--graf))"></div>
   <p class="bigq">
-    "<span class="hl">Prometheus يجمع ويخزّن</span> بيانات التطبيق كل 15 ثانية
-    — <span class="hl">Grafana تعرضها</span> في dashboards جميلة
+    "<span class="hl">Prometheus يجمع ويخزّن</span> — <span class="hl">Grafana تعرض وتنبّه</span>
     — عشان <span class="hl">نشوف المشاكل قبل ما المستخدم يحس بيها</span>"
   </p>
   <div class="pills">
@@ -690,54 +1113,60 @@ app.get(<span class="cv">'/metrics'</span>, <span class="cf">async</span> (req, 
     <span class="pill">🌟 4 Golden Signals</span>
     <span class="pill">🔎 PromQL</span>
     <span class="pill">🔔 Alertmanager</span>
-    <span class="pill">📈 Grafana Dashboards</span>
-    <span class="pill" style="border-color:var(--green);color:var(--green)">✅ Open Source</span>
+    <span class="pill">📤 Exporters</span>
+    <span class="pill">🏷️ Labels</span>
+    <span class="pill">⚡ Recording Rules</span>
+    <span class="pill">🔍 Service Discovery</span>
+    <span class="pill">🌌 Thanos</span>
+    <span class="pill" style="border-color:var(--grn);color:var(--grn)">✅ Open Source</span>
     <span class="pill" style="border-color:var(--prom2);color:var(--prom2)">🚀 Production Ready</span>
   </div>
 </section>
 
-</div><!-- end wrap -->
+</div>
 
 <script>
-const slides = [...document.querySelectorAll('.slide')];
-const dots = document.getElementById('dots');
-const prog = document.getElementById('prog');
-let cur = 0;
+const slides=[...document.querySelectorAll('.slide')];
+const dotsEl=document.getElementById('dots');
+const prog=document.getElementById('prog');
+const badge=document.getElementById('slide-badge');
+let cur=0;
 
-slides.forEach((_,i) => {
-  const d = document.createElement('div');
-  d.className = 'dot' + (i===0?' active':'');
-  d.onclick = () => go2(i);
-  dots.appendChild(d);
+slides.forEach((_,i)=>{
+  const d=document.createElement('div');
+  d.className='dot'+(i===0?' active':'');
+  d.onclick=()=>go2(i);
+  dotsEl.appendChild(d);
 });
 
-function go2(idx) {
-  if (idx < 0 || idx >= slides.length) return;
+function go2(idx){
+  if(idx<0||idx>=slides.length)return;
   slides[cur].classList.remove('active');
   slides[cur].classList.add('exit');
-  const old = cur;
-  setTimeout(() => slides[old].classList.remove('exit'), 600);
-  cur = idx;
+  const old=cur;
+  setTimeout(()=>slides[old].classList.remove('exit'),600);
+  cur=idx;
   slides[cur].classList.add('active');
-  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i===cur));
-  prog.style.width = ((cur+1)/slides.length*100) + '%';
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));
+  prog.style.width=((cur+1)/slides.length*100)+'%';
+  badge.textContent=(cur+1)+' / '+slides.length;
 }
 
-function go(dir) { go2(cur+dir); }
+function go(dir){go2(cur+dir);}
 
-document.addEventListener('keydown', e => {
-  if (e.key==='ArrowLeft'||e.key==='ArrowDown'||e.key===' ') go(1);
-  if (e.key==='ArrowRight'||e.key==='ArrowUp') go(-1);
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key===' ')go(1);
+  if(e.key==='ArrowRight')go(-1);
 });
 
-let tx = 0;
-document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
-document.addEventListener('touchend', e => {
-  const d = e.changedTouches[0].clientX - tx;
-  if (Math.abs(d) > 50) go(d < 0 ? 1 : -1);
-});
+let tx=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',e=>{
+  const d=e.changedTouches[0].clientX-tx;
+  if(Math.abs(d)>50)go(d<0?1:-1);
+},{passive:true});
 
-prog.style.width = (1/slides.length*100) + '%';
+prog.style.width=(1/slides.length*100)+'%';
 </script>
 </body>
 </html>
