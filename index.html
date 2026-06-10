@@ -187,8 +187,9 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 
 /* ══ MOBILE ══ */
 @media(max-width:768px){
-  .slide{padding:48px 14px 58px;justify-content:flex-start;overflow-y:auto;overflow-x:hidden}
-  #s1{justify-content:center}
+  .slide{padding:48px 14px 58px;justify-content:flex-start;align-items:stretch;overflow-y:auto;overflow-x:hidden}
+  .slide > * { max-width: 100%; }
+  #s1{justify-content:center;align-items:center}
   .nav-btn{width:34px;height:34px;font-size:17px}
   #btn-prev{right:6px}#btn-next{left:6px}
   #slide-badge{font-size:10px;padding:4px 10px}
@@ -212,7 +213,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   .prow{flex-direction:column;gap:6px}
   .prow .pq{white-space:normal;word-break:break-all}
   .bp-grid{grid-template-columns:1fr}
-  .snote,.verdict,.abox{padding:12px 14px;font-size:12.5px}
+  .snote,.verdict,.abox{padding:12px 14px;font-size:12.5px;word-break:break-word;overflow-wrap:break-word}
+  .bilang .en, .bilang .ar {word-break:break-word;overflow-wrap:break-word;white-space:normal}
   .sline{margin-bottom:16px}
   .bigq{font-size:clamp(15px,4.5vw,22px);margin-bottom:20px}
   .pills{gap:7px}
