@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>كويز — Prometheus & Grafana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--s1:#0f1623;--s2:#151e2e;--s3:#1c2840;
+  --border:rgba(99,179,237,.13);
+  --prom:#e6522c;--prom2:#ff7c52;
+  --graf:#f5a623;--graf2:#ffc94a;
+  --acc:#63b3ed;--acc2:#9f7aea;--acc3:#68d391;
+  --red:#fc8181;--yel:#f6e05e;--grn:#68d391;
+  --text:#e2e8f0;--mut:#718096;--mut2:#4a5568;
+}
+html,body{min-height:100vh;background:var(--bg);font-family:'Cairo',sans-serif;color:var(--text)}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 15%,rgba(230,82,44,.04) 0%,transparent 50%),radial-gradient(ellipse at 85% 85%,rgba(245,166,35,.04) 0%,transparent 50%);pointer-events:none}
+
+/* ── SCREENS ── */
+.screen{display:none;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;padding:24px}
+.screen.active{display:flex}
+
+/* ── WELCOME ── */
+#welcome{text-align:center}
+.badge-top{display:inline-flex;align-items:center;gap:8px;background:rgba(99,179,237,.08);border:1px solid rgba(99,179,237,.25);border-radius:100px;padding:6px 18px;font-size:12px;color:var(--acc);margin-bottom:24px;letter-spacing:1px}
+#welcome h1{font-size:clamp(28px,5vw,52px);font-weight:900;color:var(--text);margin-bottom:12px;line-height:1.2}
+#welcome p{font-size:16px;color:var(--mut);max-width:520px;margin:0 auto 36px;line-height:1.9}
+.stats-row{display:flex;gap:20px;justify-content:center;margin-bottom:40px}
+.stat-box{background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:18px 28px;text-align:center}
+.stat-box .snum{font-size:28px;font-weight:900;color:var(--prom2);font-family:'JetBrains Mono',monospace}
+.stat-box p{font-size:12px;color:var(--mut);margin-top:4px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,var(--prom),var(--graf));color:#fff;font-weight:700;font-size:16px;border:none;border-radius:12px;padding:14px 36px;cursor:pointer;font-family:'Cairo',sans-serif;transition:all .3s}
+.btn:hover{transform:scale(1.03);box-shadow:0 6px 24px rgba(230,82,44,.3)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);font-weight:600;font-size:14px;border-radius:10px;padding:10px 24px;cursor:pointer;font-family:'Cairo',sans-serif;transition:all .3s}
+.btn-outline:hover{border-color:var(--acc);color:var(--acc)}
+
+/* ── QUIZ ── */
+#quiz-screen{padding:20px;max-width:800px;margin:0 auto;width:100%}
+
+/* PROGRESS */
+.qprog-wrap{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.qprog-bar{flex:1;height:6px;background:var(--s2);border-radius:3px;overflow:hidden}
+.qprog-fill{height:100%;background:linear-gradient(90deg,var(--prom),var(--graf));border-radius:3px;transition:width .4s ease}
+.qprog-text{font-size:13px;color:var(--mut);white-space:nowrap;font-family:'JetBrains Mono',monospace}
+
+/* SCORE LIVE */
+.live-score{font-size:13px;color:var(--graf2);font-weight:700;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-family:'JetBrains Mono',monospace}
+
+/* CATEGORY BADGE */
+.cat-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(99,179,237,.1);border:1px solid rgba(99,179,237,.25);border-radius:100px;padding:5px 14px;font-size:12px;color:var(--acc);margin-bottom:14px;letter-spacing:.5px;font-family:'JetBrains Mono',monospace}
+
+/* QUESTION CARD */
+.q-card{background:var(--s1);border:1px solid var(--border);border-radius:18px;padding:28px;margin-bottom:20px}
+.q-num{font-size:11px;color:var(--mut);letter-spacing:2px;margin-bottom:10px}
+.q-text{font-size:clamp(16px,2.5vw,20px);font-weight:700;line-height:1.7;color:var(--text)}
+
+/* OPTIONS */
+.options{display:flex;flex-direction:column;gap:12px}
+.option{display:flex;align-items:center;gap:14px;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;cursor:pointer;transition:all .25s;font-size:15px;font-weight:500;font-family:'JetBrains Mono',monospace;direction:ltr;text-align:left}
+.option:hover:not(.disabled){background:var(--s3);border-color:var(--acc);transform:translateX(-3px)}
+.option .opt-letter{width:32px;height:32px;border-radius:8px;background:var(--s1);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--mut);flex-shrink:0;transition:all .25s}
+.option.correct{background:rgba(104,211,145,.12);border-color:var(--grn)}
+.option.correct .opt-letter{background:var(--grn);color:#000;border-color:var(--grn)}
+.option.wrong{background:rgba(252,129,129,.1);border-color:var(--red)}
+.option.wrong .opt-letter{background:var(--red);color:#000;border-color:var(--red)}
+.option.disabled{cursor:default}
+
+/* EXPLANATION */
+.explain-box{background:rgba(99,179,237,.07);border:1px solid rgba(99,179,237,.2);border-radius:12px;padding:16px 20px;margin-top:16px;font-size:14px;color:var(--text);line-height:1.8;display:none}
+.explain-box .et{font-size:12px;color:var(--acc);font-weight:700;margin-bottom:6px;letter-spacing:1px}
+
+/* NEXT BTN */
+#next-btn{margin-top:4px;width:100%;padding:14px;font-size:16px}
+
+/* ── RESULTS ── */
+#result-screen{text-align:center;padding:40px 24px;max-width:700px;margin:0 auto;width:100%}
+.score-circle{width:160px;height:160px;border-radius:50%;margin:0 auto 28px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.score-circle svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.score-circle .sc-num{font-size:42px;font-weight:900;position:relative;z-index:1;font-family:'JetBrains Mono',monospace}
+.score-circle .sc-label{font-size:12px;color:var(--mut);position:relative;z-index:1;margin-top:2px}
+.result-msg{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-sub{font-size:15px;color:var(--mut);margin-bottom:32px;line-height:1.7}
+.result-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:32px}
+.res-box{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.res-box .rv{font-size:24px;font-weight:900;margin-bottom:4px;font-family:'JetBrains Mono',monospace}
+.res-box p{font-size:12px;color:var(--mut)}
+.result-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+/* ── REVIEW ── */
+#review-screen{padding:20px;max-width:800px;margin:0 auto;width:100%}
+.rev-item{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:14px}
+.rev-item .rev-q{font-size:14px;font-weight:700;margin-bottom:12px;line-height:1.6}
+.rev-item .rev-cat{font-size:11px;color:var(--acc);margin-bottom:8px;letter-spacing:1px;font-family:'JetBrains Mono',monospace}
+.rev-ans{font-size:13px;padding:10px 14px;border-radius:8px;margin-bottom:6px;display:flex;align-items:center;gap:8px;direction:ltr;font-family:'JetBrains Mono',monospace}
+.rev-ans.correct{background:rgba(104,211,145,.1);color:var(--grn)}
+.rev-ans.wrong-user{background:rgba(252,129,129,.08);color:var(--red)}
+.rev-ans.correct-show{background:rgba(104,211,145,.1);color:var(--grn)}
+.rev-explain{font-size:12px;color:var(--mut);margin-top:8px;padding:10px 14px;background:var(--s2);border-radius:8px;line-height:1.7}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.q-card,.options,.explain-box{animation:fadeIn .4s ease}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:768px){
+  #welcome{padding:24px 16px}
+  #welcome h1{font-size:clamp(24px,8vw,38px)}
+  #welcome p{font-size:14px}
+  .badge-top{font-size:11px;padding:4px 12px}
+  .stats-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .stat-box{padding:14px 16px}
+  .stat-box .snum{font-size:22px}
+  .btn{padding:12px 24px;font-size:15px}
+  #quiz-screen{padding:14px 14px 80px}
+  .qprog-wrap{gap:8px;margin-bottom:16px}
+  .live-score{font-size:12px;padding:5px 10px}
+  .qprog-text{font-size:12px}
+  .cat-badge{font-size:11px;padding:4px 12px}
+  .q-card{padding:18px 16px;margin-bottom:14px;border-radius:14px}
+  .q-num{font-size:10px}
+  .q-text{font-size:clamp(14px,4vw,17px)}
+  .options{gap:9px}
+  .option{padding:11px 14px;font-size:13px;border-radius:10px;word-break:break-all}
+  .option .opt-letter{width:28px;height:28px;font-size:12px;border-radius:6px;flex-shrink:0}
+  .explain-box{padding:12px 14px;font-size:13px}
+  #next-btn{padding:12px;font-size:15px;margin-top:14px}
+  #result-screen{padding:24px 16px}
+  .score-circle{width:130px;height:130px;margin-bottom:20px}
+  .score-circle svg{viewBox:"0 0 130 130"}
+  .sc-num{font-size:34px}
+  .result-msg{font-size:18px}
+  .result-sub{font-size:13px;margin-bottom:20px}
+  .result-grid{grid-template-columns:1fr;gap:10px;margin-bottom:20px}
+  .res-box{padding:12px}
+  .res-box .rv{font-size:20px}
+  .result-btns{flex-direction:column;gap:10px}
+  .result-btns .btn,.result-btns .btn-outline{width:100%;text-align:center;justify-content:center}
+  #review-screen{padding:14px}
+  .rev-item{padding:16px 14px;margin-bottom:10px}
+  .rev-item .rev-q{font-size:13px}
+  .rev-ans{font-size:11px;padding:8px 12px;white-space:normal;word-break:break-all}
+  .rev-explain{font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ WELCOME SCREEN ══ -->
+<div class="screen active" id="welcome">
+  <div class="badge-top">DevOps Quiz</div>
+  <h1><span style="color:var(--prom2)">Prometheus</span> & <span style="color:var(--graf2)">Grafana</span></h1>
+  <p>اختبر معلوماتك في المراقبة، أنواع الـ Metrics، لغة PromQL، ونظام التنبيهات.</p>
+  <div class="stats-row">
+    <div class="stat-box"><div class="snum">16</div><p>سؤال</p></div>
+    <div class="stat-box"><div class="snum">4</div><p>خيارات لكل سؤال</p></div>
+    <div class="stat-box"><div class="snum">100</div><p>درجة كاملة</p></div>
+  </div>
+  <button class="btn" onclick="startQuiz()">🚀 ابدأ الاختبار</button>
+  <p style="margin-top:16px;font-size:13px;color:var(--mut)">يمكنك مراجعة الإجابات الصحيحة بعد الانتهاء</p>
+</div>
+
+<!-- ══ QUIZ SCREEN ══ -->
+<div class="screen" id="quiz-screen" style="display:none;flex-direction:column;justify-content:flex-start;padding-top:28px">
+  <div style="width:100%;max-width:800px;margin:0 auto 0">
+    <div class="qprog-wrap">
+      <div class="qprog-bar"><div class="qprog-fill" id="prog-fill" style="width:0%"></div></div>
+      <span class="qprog-text" id="prog-text">0 / 16</span>
+      <span class="live-score" id="live-score">0 / 100</span>
+    </div>
+    <div id="cat-badge" class="cat-badge"></div>
+    <div class="q-card">
+      <div class="q-num" id="q-num"></div>
+      <div class="q-text" id="q-text"></div>
+    </div>
+    <div class="options" id="options"></div>
+    <div class="explain-box" id="explain-box">
+      <div class="et">💡 التعليل</div>
+      <div id="explain-text"></div>
+    </div>
+    <button class="btn" id="next-btn" onclick="nextQuestion()" style="display:none;margin-top:20px">التالي ←</button>
+  </div>
+</div>
+
+<!-- ══ RESULT SCREEN ══ -->
+<div class="screen" id="result-screen" style="display:none">
+  <div class="score-circle" id="score-circle">
+    <svg viewBox="0 0 160 160"><circle cx="80" cy="80" r="68" fill="none" stroke="var(--s2)" stroke-width="10"/><circle cx="80" cy="80" r="68" fill="none" stroke="var(--graf2)" stroke-width="10" stroke-dasharray="427" stroke-dashoffset="427" id="circle-prog" stroke-linecap="round"/></svg>
+    <div class="sc-num" id="res-score">0</div>
+    <div class="sc-label">/ 100</div>
+  </div>
+  <div class="result-msg" id="res-msg"></div>
+  <div class="result-sub" id="res-sub"></div>
+  <div class="result-grid">
+    <div class="res-box"><div class="rv" style="color:var(--grn)" id="res-correct">0</div><p>إجابات صحيحة</p></div>
+    <div class="res-box"><div class="rv" style="color:var(--red)" id="res-wrong">0</div><p>إجابات خاطئة</p></div>
+    <div class="res-box"><div class="rv" style="color:var(--graf2)" id="res-pct">0%</div><p>النسبة المئوية</p></div>
+  </div>
+  <div class="result-btns">
+    <button class="btn" onclick="showReview()">🔍 مراجعة الإجابات</button>
+    <button class="btn-outline" onclick="restartQuiz()">🔄 إعادة الاختبار</button>
+    <button class="btn-outline" onclick="window.location.href='index.html'">📊 العرض التقديمي</button>
+  </div>
+</div>
+
+<!-- ══ REVIEW SCREEN ══ -->
+<div class="screen" id="review-screen" style="display:none;justify-content:flex-start;padding-top:28px">
+  <div style="width:100%;max-width:800px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px">
+      <button class="btn-outline" onclick="showResults()">← نتيجتي</button>
+      <h2 style="font-size:20px;font-weight:700;color:var(--text)">مراجعة الإجابات</h2>
+    </div>
+    <div id="review-list"></div>
+  </div>
+</div>
+
+<script>
+const QUESTIONS = [
+  {cat:"Architecture", q:"ما هو دور Grafana الأساسي في الـ Stack؟", opts:["يجمع البيانات ويخزنها كـ Time-Series","منصة Visualization لعرض الـ Dashboards ولا تخزن بيانات","يقوم بجمع اللوجات (Logs) فقط من السيرفرات","يبعت التنبيهات (Alerts) للإيميل فقط"], ans:1, explain:"Grafana هي منصة Visualization تقرأ البيانات من Prometheus أو غيره وتعرضها، لكنها لا تقوم بتخزين الـ Metrics داخلها."},
+  {cat:"Architecture", q:"بأي نظام (Model) يعمل Prometheus بشكل افتراضي لجمع البيانات؟", opts:["Push Model","Pull Model","Streaming Model","Batch Model"], ans:1, explain:"Prometheus يعمل بـ Pull Model، أي أنه هو الذي يذهب للتطبيقات (Scrape) كل 15 ثانية لجلب البيانات، وليس التطبيق من يرسلها إليه."},
+  {cat:"Exporters", q:"ما هي وظيفة الـ Exporters (مثل Node Exporter)؟", opts:["حفظ البيانات على الهارد ديسك","تحويل مقاييس الأنظمة (مثل CPU/RAM) لصيغة يفهمها Prometheus","عرض الـ Dashboards بدلاً من Grafana","إرسال إيميلات التنبيهات للفرق"], ans:1, explain:"الـ Exporters هي برامج وسيطة تترجم بيانات الأنظمة (Linux, MySQL, Nginx) إلى صيغة (Metrics Endpoint) يستطيع Prometheus قراءتها وسحبها."},
+  {cat:"Metric Types", q:"أي نوع من الـ Metrics يُستخدم لقياس قيم تتزايد فقط ولا تنقص أبداً (مثل إجمالي الطلبات)؟", opts:["Gauge","Histogram","Summary","Counter"], ans:3, explain:"الـ Counter هو رقم يتزايد فقط (أو يتم تصفيره عند إعادة التشغيل)، ويُستخدم لعدّ الأحداث كإجمالي الطلبات أو الأخطاء."},
+  {cat:"Metric Types", q:"أي نوع من الـ Metrics يُستخدم لقياس قيم قابلة للزيادة والنقصان (مثل استخدام الرام أو الـ CPU)؟", opts:["Counter","Gauge","Summary","Histogram"], ans:1, explain:"الـ Gauge يعبّر عن القيمة الحالية التي تصعد وتهبط بحرية، مثل درجة الحرارة، استهلاك الرام، أو عدد المتصلين حالياً."},
+  {cat:"PromQL", q:"ماذا يمثل الكود التالي: {status=\"500\"} في لغة PromQL؟", opts:["دالة لحساب الـ Average","نوع من الـ Metric Types","Label Selector لفلترة البيانات","طريقة لتعديل البيانات داخل القاعدة"], ans:2, explain:"هذا يُسمى Label Selector، ويُستخدم لفلترة البيانات واسترجاع الـ Metrics التي تحتوي على الـ Label المطابق فقط (مثلاً الطلبات التي فشلت)."},
+  {cat:"PromQL", q:"لأي غرض تُستخدم دالة rate() في PromQL مع الـ Counters؟", opts:["لحساب المتوسط الزمني للاستجابة","لحساب معدل الزيادة في الثانية الواحدة (Per-second average rate)","لحساب أعلى قيمة وصل لها الـ CPU","لتحويل الـ Gauge إلى Counter"], ans:1, explain:"دالة rate() تحسب معدل الزيادة في الثانية خلال فترة زمنية محددة (مثل rate(http_requests_total[5m]))، وهي أهم دالة للتعامل مع الـ Counters."},
+  {cat:"Golden Signals", q:"ما هي إشارات المراقبة الذهبية الأربعة (4 Golden Signals) حسب منهجية Google SRE؟", opts:["CPU, RAM, Disk, Network","Latency, Traffic, Errors, Saturation","Users, Revenue, Uptime, Downtime","Alerts, Dashboards, Logs, Metrics"], ans:1, explain:"الـ 4 Golden Signals هي أهم معايير لمراقبة أي نظام: Latency (زمن الاستجابة)، Traffic (حجم الطلبات)، Errors (نسبة الأخطاء)، و Saturation (مدى إرهاق النظام)."},
+  {cat:"Alertmanager", q:"ما هي الأداة المسؤولة عن استقبال التنبيهات من Prometheus وإرسالها لـ Slack أو Email؟", opts:["Node Exporter","Grafana Alerting","Alertmanager","Pushgateway"], ans:2, explain:"Alertmanager هو المكون الخاص في بيئة Prometheus المسؤول عن تجميع التنبيهات (Deduplication)، فلترتها، وتوجيهها لوسائل التواصل كـ Slack و PagerDuty."},
+  {cat:"Best Practices", q:"ما هي التسمية الصحيحة القياسية لـ Metric يقيس إجمالي حجم الذاكرة المستخدمة بالبايت؟", opts:["memory-used-bytes","memory_bytes_used","UsedMemoryInBytes","memoryUsage_bytes"], ans:1, explain:"Best Practices التسمية في Prometheus تعتمد على Snake Case (كلمات مفصولة بـ _)، وتبدأ باسم المكون ثم الوحدة ثم النوع (مثل memory_bytes_used)."},
+  {cat:"Pushgateway", q:"كيف يمكن لـ Prometheus مراقبة عمليات قصيرة المدى (Short-lived Batch Jobs) تنتهي قبل موعد الـ Scrape؟", opts:["بتقليل وقت الـ Scrape لثانية واحدة","لا يمكن لـ Prometheus مراقبتها","عن طريق إرسال بياناتها للـ Pushgateway ليحتفظ بها حتى يسحبها Prometheus","عن طريق استخدام Grafana API مباشرة"], ans:2, explain:"الـ Pushgateway هو وسيط يقوم الـ Batch Job بإرسال (Push) البيانات إليه قبل أن ينتهي، ويحتفظ هو بها ليقوم Prometheus بسحبها (Pull) كالمعتاد."},
+  {cat:"Prometheus", q:"ما هو الاختصار TSDB المرتبط بـ Prometheus؟", opts:["Table SQL Data Base","Time-Series Database","Text Structured Data Block","Total System Data Backup"], ans:1, explain:"Time-Series Database هي قاعدة بيانات متخصصة بتخزين البيانات المرتبطة بالزمن (كل قيمة لها Timestamp)، وهو المحرك الداخلي لـ Prometheus."},
+  {cat:"Architecture", q:"ما هي ميزة الـ Recording Rules في Prometheus؟", opts:["منع التنبيهات الكاذبة في الليل","تغيير ألوان الداشبوردز تلقائياً","حساب الـ Queries المعقدة مسبقاً وحفظ نتائجها لتسريع عرض الـ Dashboards","مسح البيانات القديمة بشكل أسرع"], ans:2, explain:"الـ Recording Rules تقوم بحساب الاستعلامات الثقيلة (مثل 99th percentile) في الخلفية وحفظ نتيجتها كـ Metric جديد، مما يجعل عرض الداشبورد سريعاً جداً."},
+  {cat:"Service Discovery", q:"كيف يتعرف Prometheus على السيرفرات الجديدة عند تزايد العدد (Scaling) دون تعديل الإعدادات يدوياً؟", opts:["عبر الـ Service Discovery (مثل Kubernetes SD أو EC2 SD)","عن طريق إرسال السيرفر لإيميل","يجب عمل Restart لـ Prometheus يومياً","يقوم بمسح كامل الـ IP Network عشوائياً"], ans:0, explain:"الـ Service Discovery يسمح لـ Prometheus بالاتصال المباشر بـ Kubernetes API أو AWS API لاكتشاف السيرفرات الجديدة وإضافتها للمراقبة تلقائياً."},
+  {cat:"Scale", q:"ما هي الأداة (المشروع المفتوح) التي تُستخدم لبناء بيئة Prometheus عالية التوافر (HA) وتخزين البيانات لسنوات (Long-term)؟", opts:["Elasticsearch","Thanos","Logstash","Kibana"], ans:1, explain:"Thanos (أو Cortex) هي أدوات تضاف لـ Prometheus لتسمح بتخزين البيانات لفترات طويلة على (S3) وتوفير Global Query View لعدة خوادم Prometheus."},
+  {cat:"Metric Types", q:"إذا أردت معرفة الـ 99th percentile (p99) لزمن استجابة طلبات الويب، أي Metric Type ستستخدم؟", opts:["Counter","Gauge","Histogram","جميع ما سبق يعطي نفس النتيجة"], ans:2, explain:"الـ Histogram يُقسم القيم إلى مجموعات (Buckets) ويسمح لنا بحساب النسب المئوية مثل p95 و p99 لزمن الاستجابة (Latency) بدقة."}
+];
+
+let current=0,score=0,answered=[],shuffled=[];
+
+function startQuiz(){
+  shuffled=[...QUESTIONS];
+  current=0;score=0;answered=[];
+  showScreen('quiz-screen');
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const q=shuffled[current];
+  document.getElementById('prog-fill').style.width=((current)/shuffled.length*100)+'%';
+  document.getElementById('prog-text').textContent=(current+1)+' / '+shuffled.length;
+  document.getElementById('live-score').textContent=score+' / 100';
+  document.getElementById('cat-badge').innerHTML='<span>'+q.cat+'</span>';
+  document.getElementById('q-num').textContent='Question '+(current+1);
+  document.getElementById('q-text').textContent=q.q;
+  document.getElementById('explain-box').style.display='none';
+  document.getElementById('next-btn').style.display='none';
+  const opts=document.getElementById('options');
+  const letters=['A','B','C','D'];
+  opts.innerHTML='';
+  q.opts.forEach((o,i)=>{
+    const div=document.createElement('div');
+    div.className='option';
+    div.innerHTML='<span class="opt-letter">'+letters[i]+'</span><span>'+o+'</span>';
+    div.onclick=()=>selectAnswer(i,div);
+    opts.appendChild(div);
+  });
+}
+
+function selectAnswer(idx,el){
+  const q=shuffled[current];
+  const opts=document.querySelectorAll('.option');
+  opts.forEach(o=>o.classList.add('disabled'));
+  opts.forEach(o=>o.onclick=null);
+  let correct=idx===q.ans;
+  if(correct){
+    el.classList.add('correct');
+    const pts=100/shuffled.length;
+    score=Math.min(100, Math.round(score+pts));
+  } else {
+    el.classList.add('wrong');
+    opts[q.ans].classList.add('correct');
+  }
+  answered.push({q:q,chosen:idx,correct});
+  document.getElementById('explain-text').textContent=q.explain;
+  document.getElementById('explain-box').style.display='block';
+  document.getElementById('next-btn').style.display='block';
+  document.getElementById('next-btn').textContent=current===shuffled.length-1?'🏁 عرض النتيجة':'التالي ←';
+}
+
+function nextQuestion(){
+  current++;
+  if(current>=shuffled.length){showResults();return;}
+  renderQuestion();
+}
+
+function showResults(){
+  const correct=answered.filter(a=>a.correct).length;
+  const wrong=answered.length-correct;
+  const pct=Math.round(correct/shuffled.length*100);
+  score=pct;
+  document.getElementById('res-score').textContent=pct;
+  document.getElementById('res-correct').textContent=correct;
+  document.getElementById('res-wrong').textContent=wrong;
+  document.getElementById('res-pct').textContent=pct+'%';
+  const offset=427-(427*pct/100);
+  document.getElementById('circle-prog').style.strokeDashoffset=offset;
+  const color=pct>=80?'var(--grn)':pct>=60?'var(--graf2)':'var(--red)';
+  document.getElementById('circle-prog').style.stroke=color;
+  document.getElementById('res-score').style.color=color;
+  let msg='',sub='';
+  if(pct>=90){msg='🏆 DevOps Master!';sub='مستوى ممتاز، فهمك عميق للمراقبة والتعامل مع TSDBs.'}
+  else if(pct>=75){msg='✨ Great Job';sub='أداء جيد جداً، أنت جاهز لتجهيز بيئات الـ Production.'}
+  else if(pct>=60){msg='👍 Good';sub='تحتاج إلى مراجعة بسيطة لبعض المفاهيم مثل الـ Metrics Types.'}
+  else if(pct>=40){msg='📚 Needs Review';sub='راجع العرض التقديمي لترسيخ مفاهيم الـ Pull Model وأنواع الـ Metrics.'}
+  else{msg='🔄 Start Over';sub='عليك مراجعة البريزنتيشن كاملاً قبل إعادة الاختبار.'}
+  document.getElementById('res-msg').textContent=msg;
+  document.getElementById('res-sub').textContent=sub;
+  showScreen('result-screen');
+}
+
+function showReview(){
+  const list=document.getElementById('review-list');
+  list.innerHTML='';
+  answered.forEach((a,i)=>{
+    const div=document.createElement('div');
+    div.className='rev-item';
+    div.innerHTML=`
+      <div class="rev-cat">${a.q.cat}</div>
+      <div class="rev-q">${i+1}. ${a.q.q}</div>
+      ${a.correct
+        ? `<div class="rev-ans correct">✅ Your Answer: ${a.q.opts[a.chosen]}</div>`
+        : `<div class="rev-ans wrong-user">❌ Your Answer: ${a.q.opts[a.chosen]}</div>
+           <div class="rev-ans correct-show">✅ Correct: ${a.q.opts[a.q.ans]}</div>`
+      }
+      <div class="rev-explain">💡 ${a.q.explain}</div>
+    `;
+    list.appendChild(div);
+  });
+  showScreen('review-screen');
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>{s.style.display='none';s.classList.remove('active');});
+  const s=document.getElementById(id);
+  s.style.display='flex';
+  s.classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function restartQuiz(){startQuiz();}
+</script>
+</body>
+</html>
