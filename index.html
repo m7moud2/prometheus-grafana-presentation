@@ -1220,6 +1220,42 @@ ExecStart=/usr/local/bin/prometheus ...<br><br>
   </div>
 </section>
 
+<!-- ══ S25: Snake Game Docker Task ══ -->
+<section class="slide" id="s25">
+  <div class="blob" style="width:400px;height:400px;background:#48bb78;top:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:#68d391">🐍 المهمة العملية: دَكْوَرَة لعبة الثعبان (Dockerization)</h2>
+  <div class="sline" style="width:70px;background:#68d391"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3 style="margin-bottom:6px">شرح الـ Dockerfile بالتفصيل</h3>
+      <div class="code" style="font-size:11px;margin-bottom:12px;background:#1a202c;border:1px solid #2f855a">
+<span class="cc"># 1. استخدام نسخة Nginx مبنية على توزيعة Alpine الخفيفة</span><br>
+<span class="ck">FROM</span> <span class="cv">nginx:alpine</span><br><br>
+<span class="cc"># 2. نسخ مجلد web (به HTML/JS) إلى مسار Nginx الافتراضي ليقوم بعرضه</span><br>
+<span class="ck">COPY</span> <span class="cv">web /usr/share/nginx/html</span><br><br>
+<span class="cc"># 3. التصريح بأن هذه الحاوية تستخدم البورت 80 داخلياً</span><br>
+<span class="ck">EXPOSE</span> <span class="cv">80</span>
+      </div>
+      <h3 style="margin-bottom:6px">شرح الأوامر (Commands)</h3>
+      <ul class="dlist" style="font-size:12.5px">
+        <li><span class="li">🛠️</span><span><code style="color:var(--text)">docker build -t snake-game-web .</code><br><em style="color:var(--mut)">الشرح:</em> قراءة ملف Dockerfile في المسار الحالي (.) وبناء الصورة.</span></li>
+        <li><span class="li">🚀</span><span><code style="color:var(--text)">docker run -d -p 80:80 --name snake-app snake-game-web</code><br><em style="color:var(--mut)">الشرح:</em> تشغيل (-d)، وربط بورت السيرفر 80 بالبورت الداخلي 80 للحاوية.</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="card" style="padding:14px;background:rgba(72, 187, 120, 0.1);border:1px solid #48bb78">
+        <h4 style="color:#68d391;margin-bottom:10px">👀 أسئلة الـ Senior واختباراته لك:</h4>
+        <ol style="font-size:12.5px;padding-right:15px;color:var(--text)">
+          <li style="margin-bottom:8px"><strong>لماذا استخدمت <code>alpine</code> بالتحديد؟</strong><br><span style="color:var(--mut)">الإجابة النموذجية: لأنها توزيعة لينكس خفيفة جداً (تستهلك حوالي 5 ميجا فقط)، وهذا يجعل تحميلها سريعاً ويقلل من الثغرات الأمنية بشكل كبير.</span></li>
+          <li style="margin-bottom:8px"><strong>كيف أعرف الأخطاء إن لم يعمل الموقع؟</strong><br><span style="color:var(--mut)">الإجابة: ننفذ الأمر <code>docker logs snake-app</code> لرؤية سجلات أخطاء خادم Nginx.</span></li>
+          <li style="margin-bottom:8px"><strong>بورت 80 مستخدم بالفعل ببرنامج آخر، ماذا نفعل؟</strong><br><span style="color:var(--mut)">الإجابة: نقوم بتغيير بورت السيرفر (الجزء الأيسر في الأمر) ليصبح مثلاً: <code>-p 8080:80</code>.</span></li>
+          <li style="margin-bottom:4px"><strong>ادخل داخل الحاوية وتأكد من وجود الملفات!</strong><br><span style="color:var(--mut)">كيف تفعلها: اكتب <code>docker exec -it snake-app sh</code> ثم <code>ls /usr/share/nginx/html</code>.</span></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══ S22: Final ══ -->
 <section class="slide" id="sfinal">
   <div class="blob" style="width:500px;height:500px;background:var(--prom);top:-180px;right:-120px"></div>
