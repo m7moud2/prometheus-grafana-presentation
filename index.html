@@ -1176,6 +1176,50 @@ ExecStart=/usr/local/bin/prometheus ...<br><br>
   </div>
 </section>
 
+<!-- ══ S24: WordPress LAMP Task ══ -->
+<section class="slide" id="s24">
+  <div class="blob" style="width:400px;height:400px;background:#3182ce;top:-100px;left:-80px"></div>
+  <h2 class="stitle" style="color:#63b3ed">💻 المهمة العملية: ووردبريس على LAMP Stack</h2>
+  <div class="sline" style="width:70px;background:#63b3ed"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>كيف تم إعداد الـ LAMP Stack؟</h3>
+      <p>بدلاً من تثبيت كل خدمة يدوياً، استخدمنا Docker Compose لنشر البيئة بالكامل:</p>
+      <ul class="dlist" style="font-size:14px">
+        <li><span class="li">🐧</span><span><strong style="color:var(--text)">L (Linux):</strong> بيئة عمل الحاويات الافتراضية.</span></li>
+        <li><span class="li">🌐</span><span><strong style="color:var(--text)">A (Apache) & P (PHP):</strong> مدمجان داخل صورة <code>wordpress:latest</code>.</span></li>
+        <li><span class="li">🐬</span><span><strong style="color:var(--text)">M (MySQL):</strong> صورة <code>mysql:8.0</code> لربطها بقاعدة البيانات.</span></li>
+      </ul>
+      <h3 style="margin-top:15px;color:#fc8181">⚠️ أخطاء متوقعة (Errors & Solutions)</h3>
+      <ul class="dlist" style="font-size:13px">
+        <li><span class="li">🔴</span><span><strong>Error: Bind for 0.0.0.0:8080 failed: port is already allocated</strong><br><em>السبب:</em> البورت 8080 مستخدم مسبقاً. <br><em>الحل:</em> تغييره في الملف إلى <code>"8081:80"</code>.</span></li>
+        <li><span class="li">🔴</span><span><strong>Error establishing a database connection</strong><br><em>السبب:</em> MySQL استغرق وقتاً طويلاً للتشغيل قبل ووردبريس.<br><em>الحل:</em> وجود <code>restart: always</code> يحله تلقائياً، أو تأكد من صحة المتغيرات <code>WORDPRESS_DB_HOST</code>.</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="card" style="padding:14px;background:#1a202c;border:1px solid #2d3748;margin-bottom:12px">
+        <h4 style="color:#63b3ed;margin-bottom:8px">📂 مسار الملف على السيرفر:</h4>
+        <code style="color:var(--text)">/root/wordpress-lamp/docker-compose.yml</code>
+      </div>
+      <div class="code" style="font-size:11px;margin-bottom:12px">
+<span class="cc"># الأوامر التي تم تنفيذها للتشغيل</span><br>
+<span class="cv">mkdir -p /root/wordpress-lamp</span><br>
+<span class="cv">cd /root/wordpress-lamp</span><br>
+<span class="cv">nano docker-compose.yml</span> <span class="cc"># لكتابة الإعدادات</span><br>
+<span class="cv">docker compose up -d</span> <span class="cc"># لتشغيل المشروع في الخلفية</span>
+      </div>
+      <div class="card" style="padding:14px;background:rgba(99, 179, 237, 0.1);border:1px solid #3182ce">
+        <h4 style="color:#63b3ed;margin-bottom:8px">👀 ماذا سيطلب منك الـ Senior؟</h4>
+        <ol style="font-size:13px;padding-right:15px;color:var(--text)">
+          <li style="margin-bottom:6px">سيطلب رؤية الملف: <code style="color:#90cdf4">cat /root/wordpress-lamp/docker-compose.yml</code></li>
+          <li style="margin-bottom:6px">التأكد أن الحاويات تعمل (Up): <code style="color:#90cdf4">docker compose ps</code></li>
+          <li>سيطلب فتح المتصفح على <code style="color:#90cdf4">http://192.168.1.150:8080</code> ليرى شاشة تنصيب ووردبريس.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══ S22: Final ══ -->
 <section class="slide" id="sfinal">
   <div class="blob" style="width:500px;height:500px;background:var(--prom);top:-180px;right:-120px"></div>
