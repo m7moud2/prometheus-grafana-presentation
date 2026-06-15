@@ -1137,120 +1137,238 @@ app.get(<span class="cv">'/metrics'</span>, <span class="cf">async</span> (req, 
   </div>
 </section>
 
-<!-- ══ S23: Tasks Explanation ══ -->
+<!-- ══ S23: Prometheus Hard Limits (Concept) ══ -->
 <section class="slide" id="s23">
   <div class="blob" style="width:400px;height:400px;background:var(--acc);top:-100px;right:-80px"></div>
-  <h2 class="stitle" style="color:var(--acc)">💻 المهام العملية (Practical Tasks)</h2>
+  <h2 class="stitle" style="color:var(--acc)">💻 1. Prometheus Limits (Concept)</h2>
   <div class="sline" style="width:70px;background:var(--acc)"></div>
   <div class="dlay">
     <div class="dleft">
-      <h3>1. تقييد استهلاك Prometheus</h3>
-      <p>بما أن Prometheus يعمل كـ Systemd Service، قمنا بتعديل <code style="color:var(--acc)">/etc/systemd/system/prometheus.service</code> لإضافة Limits صارمة باستخدام Cgroups لحماية السيرفر من الانهيار (OOM):</p>
-      <ul class="dlist">
-        <li><span class="li">💾</span><span><strong style="color:var(--text)">MemoryLimit=500M</strong> — أقصى استهلاك للرام</span></li>
-        <li><span class="li">⚡</span><span><strong style="color:var(--text)">CPUQuota=50%</strong> — أقصى استهلاك للمعالج</span></li>
+      <h3>ليه محتاجين نعمل Resource Allocation؟</h3>
+      <p>في الـ <strong>Corporate Environment</strong>، أي Service ممكن تعمل <strong>Memory Leak</strong> أو تستهلك الـ RAM كلها، وده بيعمل <strong>OOM (Out of Memory) Crash</strong> للـ Server كله.</p>
+      <ul class="dlist" style="font-size:14px">
+        <li><span class="li">🛡️</span><span><strong>Hard Limits vs Soft Limits:</strong> الـ Soft limit مجرد نصيحة للبرنامج، لكن الـ Hard Limit بيمنعه بالقوة من خلال الـ <strong>Linux Kernel</strong>.</span></li>
+        <li><span class="li">⚙️</span><span><strong>Cgroups:</strong> الـ <strong>Systemd</strong> بيستخدم خاصية الـ Control Groups عشان يفرض Limits صارمة على الـ Processes.</span></li>
       </ul>
-      <h3 style="margin-top:20px">2. إعطاء صلاحيات Sudo آمنة (NOPASSWD)</h3>
-      <p>السماح للمستخدم <code style="color:var(--acc)">mahmoud</code> بتنفيذ أمر <code style="color:var(--acc)">ls /root</code> دون باسوورد، وبدون فتح صلاحيات مجلد الروت للكل (Others)، عبر إنشاء ملف آمن.</p>
     </div>
     <div>
-      <div class="code" style="font-size:11px;margin-bottom:12px">
-<span class="cc"># 1. تقييد موارد Prometheus</span><br>
-<span class="ck">[Service]</span><br>
-User=prometheus<br>
-Type=simple<br>
-<span class="cs">MemoryLimit=500M</span><br>
-<span class="cs">CPUQuota=50%</span><br>
-ExecStart=/usr/local/bin/prometheus ...<br><br>
-<span class="cc"># ثم تحديث الخدمة</span><br>
-<span class="cv">systemctl daemon-reload</span><br>
-<span class="cv">systemctl restart prometheus</span>
+      <div class="card" style="padding:14px;background:rgba(255,100,100,0.1);border:1px solid #fc8181;margin-top:20px">
+        <h4 style="color:#fc8181;margin-bottom:8px">👀 Senior Question:</h4>
+        <p style="font-size:13.5px;color:var(--text)">"ليه معدلناش من داخل كونفيج Prometheus وخلاص؟"</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة النموذجية:</strong> لأن إعدادات البرنامج الداخلية مش بتضمن حماية الـ OS. استخدام الـ Systemd Cgroups بيعتبر <strong>Best Practice</strong> عشان ندي للخدمة <strong>Quota</strong> ثابتة لا يمكن تتخطاها ونحمي الـ Server Availability.</p>
       </div>
-      <div class="code" style="font-size:11px">
-<span class="cc"># 2. إضافة NOPASSWD للمستخدم mahmoud</span><br>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S24: Prometheus Hard Limits (Execution) ══ -->
+<section class="slide" id="s24">
+  <div class="blob" style="width:400px;height:400px;background:var(--acc);top:-100px;left:-80px"></div>
+  <h2 class="stitle" style="color:var(--acc)">💻 1. Prometheus Limits (Execution)</h2>
+  <div class="sline" style="width:70px;background:var(--acc)"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>التنفيذ العملي (The Implementation)</h3>
+      <p>عشان نطبق ده، بندخل على الـ <strong>Service file</strong> ونضيف الـ <strong>Parameters</strong> بتاعتنا في الـ <code>[Service]</code> block.</p>
+      <div class="code" style="font-size:12px;margin-bottom:12px">
+<span class="cc"># File: /etc/systemd/system/prometheus.service</span><br>
+<span class="ck">[Service]</span><br>
+<span class="cv">User</span>=prometheus<br>
+<span class="cv">Type</span>=simple<br>
+<span class="cs">MemoryLimit</span>=500M <span class="cc"># الحد الأقصى للرام</span><br>
+<span class="cs">CPUQuota</span>=50% <span class="cc"># نصف قدرة نواة معالج</span><br>
+<span class="cv">ExecStart</span>=/usr/local/bin/prometheus ...
+      </div>
+    </div>
+    <div>
+      <h3>أوامر التشغيل (Applying Changes)</h3>
+      <div class="code" style="font-size:12px;margin-bottom:12px">
+<span class="cc"># 1. إخبار الـ Systemd بأن هناك تعديل حدث</span><br>
+<span class="cv">systemctl daemon-reload</span><br><br>
+<span class="cc"># 2. إعادة تشغيل الخدمة لتطبيق القيود</span><br>
+<span class="cv">systemctl restart prometheus</span><br><br>
+<span class="cc"># 3. التأكد من عمل الخدمة</span><br>
+<span class="cv">systemctl status prometheus</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S25: Sudoers NOPASSWD (Concept) ══ -->
+<section class="slide" id="s25">
+  <div class="blob" style="width:400px;height:400px;background:#ed8936;top:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:#ed8936">💻 2. Sudoers NOPASSWD (Concept)</h2>
+  <div class="sline" style="width:70px;background:#ed8936"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>إيه هو الـ Principle of Least Privilege؟</h3>
+      <p>في الـ <strong>Security</strong>، بنعطي للمستخدم الصلاحيات اللي محتاجها فقط <strong>(Minimum Access)</strong>. لو يوزر محتاج يقرأ حاجة من الـ <code>/root</code>، مش صح نعمل <code>chmod 777</code> أو نديله باسورد الروت!</p>
+      <ul class="dlist" style="font-size:14px">
+        <li><span class="li">🔒</span><span><strong>Sudoers File:</strong> بيسمحلك تدي <strong>Granular Permissions</strong> (صلاحيات دقيقة جداً) لمستخدم محدد على كوماند محدد.</span></li>
+        <li><span class="li">📁</span><span><strong>/etc/sudoers.d/:</strong> الـ <strong>Best Practice</strong> إننا نعمل ملف منفصل لكل يوزر، بدل ما نعدل في الملف الرئيسي <code>/etc/sudoers</code> عشان نتجنب الـ <strong>Syntax Errors</strong>.</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="card" style="padding:14px;background:rgba(237,137,54,0.1);border:1px solid #ed8936;margin-top:20px">
+        <h4 style="color:#ed8936;margin-bottom:8px">👀 Senior Question:</h4>
+        <p style="font-size:13.5px;color:var(--text)">"إيه اللي يمنع اليوزر إنه يعمل حاجة تانية غير اللي سمحناله بيها؟"</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة:</strong> لأننا في الـ <strong>Rule</strong> حددنا الـ Absolute Path للأمر <code>/usr/bin/ls /root</code> فقط. لو حاول يكتب <code>sudo rm /root/file</code> السيرفر هيرفض ويطلب الباسورد (اللي هو ميعرفوش).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S26: Sudoers NOPASSWD (Execution) ══ -->
+<section class="slide" id="s26">
+  <div class="blob" style="width:400px;height:400px;background:#ed8936;top:-100px;left:-80px"></div>
+  <h2 class="stitle" style="color:#ed8936">💻 2. Sudoers NOPASSWD (Execution)</h2>
+  <div class="sline" style="width:70px;background:#ed8936"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>كتابة الـ Rule وتأمينها</h3>
+      <p>هنكتب <strong>Rule</strong> للمستخدم <code>mahmoud</code> تخليه يعمل <code>ls</code> على الـ <code>/root</code> بدون ما يُسأل عن الباسورد <strong>(NOPASSWD)</strong>.</p>
+      <div class="code" style="font-size:11px;margin-bottom:12px">
+<span class="cc"># إنشاء ملف خاص باليوزر وكتابة القاعدة بداخله</span><br>
 <span class="cv">echo "mahmoud ALL=(ALL) NOPASSWD: /usr/bin/ls /root" > /etc/sudoers.d/mahmoud_ls_root</span><br><br>
-<span class="cc"># تأمين الملف (قراءة للـ root فقط)</span><br>
+<span class="cc"># خطوة أمنية مهمة: التأكد إن الملف Read-only للـ root فقط</span><br>
 <span class="cv">chmod 0440 /etc/sudoers.d/mahmoud_ls_root</span>
       </div>
     </div>
+    <div>
+      <h3>التحقق من صحة الكود (Syntax Validation)</h3>
+      <p style="font-size:13px">لو كتبنا حاجة غلط في الـ sudoers، ممكن نقفل الـ Server على نفسنا <strong>(Lockout)</strong>. عشان كده الـ Senior بيحب يشوفك بتعمل <strong>Validation</strong>:</p>
+      <div class="code" style="font-size:12px;margin-bottom:12px">
+<span class="cc"># للتأكد من عدم وجود أخطاء برمجية في الملف</span><br>
+<span class="cv">visudo -c</span>
+      </div>
+      <p style="font-size:13px;color:var(--mut)">المستخدم دلوقتي يقدر يكتب <code>sudo ls /root</code> والأمر هيتنفذ فوراً بدون <strong>Prompt</strong> للباسورد.</p>
+    </div>
   </div>
 </section>
 
-<!-- ══ S24: WordPress LAMP Task ══ -->
-<section class="slide" id="s24">
-  <div class="blob" style="width:400px;height:400px;background:#3182ce;top:-100px;left:-80px"></div>
-  <h2 class="stitle" style="color:#63b3ed">💻 المهمة العملية: ووردبريس على LAMP Stack</h2>
+<!-- ══ S27: WordPress LAMP Stack (Architecture) ══ -->
+<section class="slide" id="s27">
+  <div class="blob" style="width:400px;height:400px;background:#3182ce;top:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:#63b3ed">💻 3. WP LAMP Stack (Architecture)</h2>
   <div class="sline" style="width:70px;background:#63b3ed"></div>
   <div class="dlay">
     <div class="dleft">
-      <h3>كيف تم إعداد الـ LAMP Stack؟</h3>
-      <p>بدلاً من تثبيت كل خدمة يدوياً، استخدمنا Docker Compose لنشر البيئة بالكامل:</p>
+      <h3>كيف نحقق الـ LAMP Stack بالـ Docker؟</h3>
+      <p>بدل التثبيت اليدوي، الـ <strong>Docker Compose</strong> بيخلينا نبني الـ <strong>Stack</strong> كله بملف واحد.</p>
       <ul class="dlist" style="font-size:14px">
-        <li><span class="li">🐧</span><span><strong style="color:var(--text)">L (Linux):</strong> بيئة عمل الحاويات الافتراضية.</span></li>
-        <li><span class="li">🌐</span><span><strong style="color:var(--text)">A (Apache) & P (PHP):</strong> مدمجان داخل صورة <code>wordpress:latest</code>.</span></li>
-        <li><span class="li">🐬</span><span><strong style="color:var(--text)">M (MySQL):</strong> صورة <code>mysql:8.0</code> لربطها بقاعدة البيانات.</span></li>
-      </ul>
-      <h3 style="margin-top:15px;color:#fc8181">⚠️ أخطاء متوقعة (Errors & Solutions)</h3>
-      <ul class="dlist" style="font-size:13px">
-        <li><span class="li">🔴</span><span><strong>Error: Bind for 0.0.0.0:8080 failed: port is already allocated</strong><br><em>السبب:</em> البورت 8080 مستخدم مسبقاً. <br><em>الحل:</em> تغييره في الملف إلى <code>"8081:80"</code>.</span></li>
-        <li><span class="li">🔴</span><span><strong>Error establishing a database connection</strong><br><em>السبب:</em> MySQL استغرق وقتاً طويلاً للتشغيل قبل ووردبريس.<br><em>الحل:</em> وجود <code>restart: always</code> يحله تلقائياً، أو تأكد من صحة المتغيرات <code>WORDPRESS_DB_HOST</code>.</span></li>
+        <li><span class="li">🐧</span><span><strong style="color:var(--text)">L (Linux):</strong> الـ Docker بيعمل <strong>Isolation</strong> جوا بيئة لينكس.</span></li>
+        <li><span class="li">🌐</span><span><strong style="color:var(--text)">A & P (Apache & PHP):</strong> الـ <strong>Official Image</strong> الخاصة بـ <code>wordpress:latest</code> مبنية بالفعل على خادم Apache ومدمج معها PHP.</span></li>
+        <li><span class="li">🐬</span><span><strong style="color:var(--text)">M (MySQL):</strong> هنفصل الـ Database في حاوية (Container) مخصصة باستخدام صورة <code>mysql:8.0</code> كـ <strong>Best Practice</strong> في الـ Microservices.</span></li>
       </ul>
     </div>
     <div>
-      <div class="card" style="padding:14px;background:#1a202c;border:1px solid #2d3748;margin-bottom:12px">
-        <h4 style="color:#63b3ed;margin-bottom:8px">📂 مسار الملف على السيرفر:</h4>
-        <code style="color:var(--text)">/root/wordpress-lamp/docker-compose.yml</code>
-      </div>
-      <div class="code" style="font-size:11px;margin-bottom:12px">
-<span class="cc"># الأوامر التي تم تنفيذها للتشغيل</span><br>
-<span class="cv">mkdir -p /root/wordpress-lamp</span><br>
-<span class="cv">cd /root/wordpress-lamp</span><br>
-<span class="cv">nano docker-compose.yml</span> <span class="cc"># لكتابة الإعدادات</span><br>
-<span class="cv">docker compose up -d</span> <span class="cc"># لتشغيل المشروع في الخلفية</span>
-      </div>
-      <div class="card" style="padding:14px;background:rgba(99, 179, 237, 0.1);border:1px solid #3182ce">
-        <h4 style="color:#63b3ed;margin-bottom:8px">👀 ماذا سيطلب منك الـ Senior؟</h4>
-        <ol style="font-size:13px;padding-right:15px;color:var(--text)">
-          <li style="margin-bottom:6px">سيطلب رؤية الملف: <code style="color:#90cdf4">cat /root/wordpress-lamp/docker-compose.yml</code></li>
-          <li style="margin-bottom:6px">التأكد أن الحاويات تعمل (Up): <code style="color:#90cdf4">docker compose ps</code></li>
-          <li>سيطلب فتح المتصفح على <code style="color:#90cdf4">http://192.168.1.150:8080</code> ليرى شاشة تنصيب ووردبريس.</li>
-        </ol>
+      <div class="card" style="padding:14px;background:rgba(49,130,206,0.1);border:1px solid #3182ce;margin-top:10px">
+        <h4 style="color:#63b3ed;margin-bottom:8px">👀 Senior Question:</h4>
+        <p style="font-size:13.5px;color:var(--text)">"ليه حطينا MySQL في Container لوحده؟"</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة:</strong> لأن من مبادئ الـ <strong>Containerization</strong> إن كل حاوية يكون فيها <strong>Single Process</strong>. لو فصلناهم نقدر نعمل <strong>Scaling</strong> للـ WordPress لوحده بدون التأثير على قاعدة البيانات، وكمان يسهل الـ <strong>Backups</strong> و الـ Maintenance.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ══ S25: Snake Game Docker Task ══ -->
-<section class="slide" id="s25">
+<!-- ══ S28: WordPress LAMP Stack (Compose File) ══ -->
+<section class="slide" id="s28">
+  <div class="blob" style="width:400px;height:400px;background:#3182ce;top:-100px;left:-80px"></div>
+  <h2 class="stitle" style="color:#63b3ed">💻 3. WP LAMP Stack (Execution)</h2>
+  <div class="sline" style="width:70px;background:#63b3ed"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <div class="code" style="font-size:10.5px;margin-bottom:12px">
+<span class="ck">services:</span><br>
+&nbsp;&nbsp;<span class="ck">db:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">image:</span> <span class="cv">mysql:8.0</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">restart:</span> <span class="cv">always</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">environment:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">MYSQL_DATABASE:</span> <span class="cv">wordpress</span><br>
+<br>
+&nbsp;&nbsp;<span class="ck">wordpress:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">depends_on:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="cv">db</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">image:</span> <span class="cv">wordpress:latest</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">ports:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="cv">"8080:80"</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">environment:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">WORDPRESS_DB_HOST:</span> <span class="cv">db:3306</span>
+      </div>
+      <p style="font-size:12px;color:var(--text)">مسار الملف: <code>/root/wordpress-lamp/docker-compose.yml</code></p>
+    </div>
+    <div>
+      <h3 style="margin-top:0;color:#fc8181">⚠️ Troubleshooting & Logs</h3>
+      <ul class="dlist" style="font-size:12.5px">
+        <li><span class="li">🔴</span><span><strong>Error: Bind for 0.0.0.0:8080 failed</strong><br>السبب: الـ <strong>Port Collision</strong> (البورت مستخدم).<br>الحل: تغييره إلى <code>"8081:80"</code>.</span></li>
+        <li><span class="li">🔴</span><span><strong>Database Connection Error</strong><br>السبب: حاوية MySQL بتحتاج وقت عشان تعمل <strong>Initialization</strong>.<br>الحل: استخدمنا <code>restart: always</code> و <code>depends_on</code> لحلها.</span></li>
+      </ul>
+      <div class="code" style="font-size:11px;margin-top:10px">
+<span class="cc"># التشغيل في الخلفية (Detached mode)</span><br>
+<span class="cv">docker compose up -d</span><br><br>
+<span class="cc"># ما سيطلبه الـ Senior للتحقق</span><br>
+<span class="cv">docker compose ps</span> <span class="cc"># للتأكد من حالة الـ Containers</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S29: Snake Game Dockerization (Dockerfile) ══ -->
+<section class="slide" id="s29">
   <div class="blob" style="width:400px;height:400px;background:#48bb78;top:-100px;right:-80px"></div>
-  <h2 class="stitle" style="color:#68d391">🐍 المهمة العملية: دَكْوَرَة لعبة الثعبان (Dockerization)</h2>
+  <h2 class="stitle" style="color:#68d391">🐍 4. Snake Game Dockerization</h2>
   <div class="sline" style="width:70px;background:#68d391"></div>
   <div class="dlay">
     <div class="dleft">
-      <h3 style="margin-bottom:6px">شرح الـ Dockerfile بالتفصيل</h3>
-      <div class="code" style="font-size:11px;margin-bottom:12px;background:#1a202c;border:1px solid #2f855a">
-<span class="cc"># 1. استخدام نسخة Nginx مبنية على توزيعة Alpine الخفيفة</span><br>
+      <h3>كيف نبني صورة (Image) مخصصة؟</h3>
+      <p>اللعبة عبارة عن Static Files (HTML/JS)، عشان كدا محتاجين <strong>Web Server</strong> يشغلها. كتبنا الـ <code>Dockerfile</code> بالشكل ده:</p>
+      <div class="code" style="font-size:11.5px;margin-bottom:12px;background:#1a202c;border:1px solid #2f855a">
+<span class="cc"># 1. Base Image - خادم ويب مبني على توزيعة خفيفة</span><br>
 <span class="ck">FROM</span> <span class="cv">nginx:alpine</span><br><br>
-<span class="cc"># 2. نسخ مجلد web (به HTML/JS) إلى مسار Nginx الافتراضي ليقوم بعرضه</span><br>
+<span class="cc"># 2. Copy Artifacts - نقل الكود لداخل الـ Container</span><br>
 <span class="ck">COPY</span> <span class="cv">web /usr/share/nginx/html</span><br><br>
-<span class="cc"># 3. التصريح بأن هذه الحاوية تستخدم البورت 80 داخلياً</span><br>
+<span class="cc"># 3. Documentation - تعريف البورت الداخلي</span><br>
 <span class="ck">EXPOSE</span> <span class="cv">80</span>
       </div>
-      <h3 style="margin-bottom:6px">شرح الأوامر (Commands)</h3>
-      <ul class="dlist" style="font-size:12.5px">
-        <li><span class="li">🛠️</span><span><code style="color:var(--text)">docker build -t snake-game-web .</code><br><em style="color:var(--mut)">الشرح:</em> قراءة ملف Dockerfile في المسار الحالي (.) وبناء الصورة.</span></li>
-        <li><span class="li">🚀</span><span><code style="color:var(--text)">docker run -d -p 80:80 --name snake-app snake-game-web</code><br><em style="color:var(--mut)">الشرح:</em> تشغيل (-d)، وربط بورت السيرفر 80 بالبورت الداخلي 80 للحاوية.</span></li>
-      </ul>
     </div>
     <div>
-      <div class="card" style="padding:14px;background:rgba(72, 187, 120, 0.1);border:1px solid #48bb78">
-        <h4 style="color:#68d391;margin-bottom:10px">👀 أسئلة الـ Senior واختباراته لك:</h4>
-        <ol style="font-size:12.5px;padding-right:15px;color:var(--text)">
-          <li style="margin-bottom:8px"><strong>لماذا استخدمت <code>alpine</code> بالتحديد؟</strong><br><span style="color:var(--mut)">الإجابة النموذجية: لأنها توزيعة لينكس خفيفة جداً (تستهلك حوالي 5 ميجا فقط)، وهذا يجعل تحميلها سريعاً ويقلل من الثغرات الأمنية بشكل كبير.</span></li>
-          <li style="margin-bottom:8px"><strong>كيف أعرف الأخطاء إن لم يعمل الموقع؟</strong><br><span style="color:var(--mut)">الإجابة: ننفذ الأمر <code>docker logs snake-app</code> لرؤية سجلات أخطاء خادم Nginx.</span></li>
-          <li style="margin-bottom:8px"><strong>بورت 80 مستخدم بالفعل ببرنامج آخر، ماذا نفعل؟</strong><br><span style="color:var(--mut)">الإجابة: نقوم بتغيير بورت السيرفر (الجزء الأيسر في الأمر) ليصبح مثلاً: <code>-p 8080:80</code>.</span></li>
-          <li style="margin-bottom:4px"><strong>ادخل داخل الحاوية وتأكد من وجود الملفات!</strong><br><span style="color:var(--mut)">كيف تفعلها: اكتب <code>docker exec -it snake-app sh</code> ثم <code>ls /usr/share/nginx/html</code>.</span></li>
-        </ol>
+      <div class="card" style="padding:14px;background:rgba(72, 187, 120, 0.1);border:1px solid #48bb78;margin-top:10px">
+        <h4 style="color:#68d391;margin-bottom:8px">👀 Senior Question:</h4>
+        <p style="font-size:13.5px;color:var(--text)">"إيه الميزة اللي بتديها لينا نسخة الـ <code>alpine</code>؟ وليه مش <code>ubuntu</code>؟"</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة:</strong> الـ <strong>Alpine Linux</strong> بتتميز بحاجتين مهمين جداً في الـ Production:<br>
+        1. <strong>Image Size:</strong> مساحتها حوالي 5MB فقط، وده بيسرع الـ <strong>Builds & Deployments</strong>.<br>
+        2. <strong>Security:</strong> تقليل الـ <strong>Attack Surface</strong> بسبب صغر الحجم وعدم وجود باكيدجات غير ضرورية.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S30: Snake Game Dockerization (Build & Run) ══ -->
+<section class="slide" id="s30">
+  <div class="blob" style="width:400px;height:400px;background:#48bb78;top:-100px;left:-80px"></div>
+  <h2 class="stitle" style="color:#68d391">🐍 4. Snake Game (Build & Run)</h2>
+  <div class="sline" style="width:70px;background:#68d391"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>البناء والتشغيل (Build & Deploy)</h3>
+      <div class="code" style="font-size:11.5px;margin-bottom:12px">
+<span class="cc"># 1. Build the Docker Image</span><br>
+<span class="cc"># -t بتعمل Tag للصورة، والنقطة (.) تعني المسار الحالي</span><br>
+<span class="cv">docker build -t snake-game-web .</span><br><br>
+<span class="cc"># 2. Run the Container</span><br>
+<span class="cc"># -d: Detached mode (شغال في الخلفية)</span><br>
+<span class="cc"># -p: Port Mapping (HostPort:ContainerPort)</span><br>
+<span class="cv">docker run -d -p 80:80 --name snake-app snake-game-web</span>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="padding:14px;background:#1a202c;border:1px solid #48bb78">
+        <h4 style="color:#68d391;margin-bottom:8px">🛠️ Debugging & Inspection</h4>
+        <p style="font-size:12.5px;color:var(--text);margin-bottom:6px">السينيور ممكن يختبر مهارتك في الـ <strong>Troubleshooting</strong>:</p>
+        <ul class="dlist" style="font-size:12px">
+          <li><span class="li">📝</span><span><strong>قراءة الـ Logs:</strong> لو Nginx ضرب، هتشوف الخطأ عن طريق الأمر:<br><code>docker logs snake-app</code></span></li>
+          <li><span class="li">🔍</span><span><strong>فحص الملفات داخلياً:</strong> لو الموقع فاضي، لازم تدخل جوه الـ Container وتتأكد إن الـ <code>COPY</code> اشتغل:<br><code>docker exec -it snake-app sh</code><br>ثم <code>ls /usr/share/nginx/html</code>.</span></li>
+        </ul>
       </div>
     </div>
   </div>
