@@ -1148,14 +1148,18 @@ app.get(<span class="cv">'/metrics'</span>, <span class="cf">async</span> (req, 
       <p>في الـ <strong>Corporate Environment</strong>، أي Service ممكن تعمل <strong>Memory Leak</strong> أو تستهلك الـ RAM كلها، وده بيعمل <strong>OOM (Out of Memory) Crash</strong> للـ Server كله.</p>
       <ul class="dlist" style="font-size:14px">
         <li><span class="li">🛡️</span><span><strong>Hard Limits vs Soft Limits:</strong> الـ Soft limit مجرد نصيحة للبرنامج، لكن الـ Hard Limit بيمنعه بالقوة من خلال الـ <strong>Linux Kernel</strong>.</span></li>
-        <li><span class="li">⚙️</span><span><strong>Cgroups:</strong> الـ <strong>Systemd</strong> بيستخدم خاصية الـ Control Groups عشان يفرض Limits صارمة على الـ Processes.</span></li>
+        <li><span class="li">⚙️</span><span><strong>Cgroups v2:</strong> الـ <strong>Systemd</strong> بيستخدم خاصية الـ Control Groups عشان يفرض Limits صارمة على الـ Processes، وده أفضل من تعديل الـ flags الخاصة ببرنامج Prometheus نفسه.</span></li>
       </ul>
+      <div style="margin-top:15px;padding:10px;background:rgba(255,255,255,0.05);border-left:3px solid var(--acc);border-radius:4px;">
+        <span style="font-size:12px;color:var(--mut)">📚 <strong>Official Source:</strong></span><br>
+        <a href="https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html" target="_blank" style="font-size:13px;color:#63b3ed;text-decoration:none">freedesktop.org: systemd.resource-control(5) Manual</a>
+      </div>
     </div>
     <div>
       <div class="card" style="padding:14px;background:rgba(255,100,100,0.1);border:1px solid #fc8181;margin-top:20px">
         <h4 style="color:#fc8181;margin-bottom:8px">👀 Senior Question:</h4>
         <p style="font-size:13.5px;color:var(--text)">"ليه معدلناش من داخل كونفيج Prometheus وخلاص؟"</p>
-        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة النموذجية:</strong> لأن إعدادات البرنامج الداخلية مش بتضمن حماية الـ OS. استخدام الـ Systemd Cgroups بيعتبر <strong>Best Practice</strong> عشان ندي للخدمة <strong>Quota</strong> ثابتة لا يمكن تتخطاها ونحمي الـ Server Availability.</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة النموذجية:</strong> لأن إعدادات البرنامج الداخلية (زي <code>--storage.tsdb.retention.size</code>) بتتحكم في حجم الداتا على الهارد، لكنها مش بتضمن حماية الـ OS من استهلاك الرام المفاجئ. استخدام الـ Systemd Cgroups بيعتبر <strong>Best Practice</strong> عشان ندي للخدمة <strong>Quota</strong> ثابتة لا يمكن تتخطاها من مستوى الـ Kernel ونحمي الـ Server Availability.</p>
       </div>
     </div>
   </div>
@@ -1207,12 +1211,17 @@ app.get(<span class="cv">'/metrics'</span>, <span class="cf">async</span> (req, 
         <li><span class="li">🔒</span><span><strong>Sudoers File:</strong> بيسمحلك تدي <strong>Granular Permissions</strong> (صلاحيات دقيقة جداً) لمستخدم محدد على كوماند محدد.</span></li>
         <li><span class="li">📁</span><span><strong>/etc/sudoers.d/:</strong> الـ <strong>Best Practice</strong> إننا نعمل ملف منفصل لكل يوزر، بدل ما نعدل في الملف الرئيسي <code>/etc/sudoers</code> عشان نتجنب الـ <strong>Syntax Errors</strong>.</span></li>
       </ul>
+      <div style="margin-top:15px;padding:10px;background:rgba(255,255,255,0.05);border-left:3px solid #ed8936;border-radius:4px;">
+        <span style="font-size:12px;color:var(--mut)">📚 <strong>Official Sources:</strong></span><br>
+        <a href="https://linux.die.net/man/5/sudoers" target="_blank" style="font-size:12.5px;color:#63b3ed;text-decoration:none;display:block;margin-bottom:4px">Linux man page: sudoers(5)</a>
+        <a href="https://help.ubuntu.com/community/Sudoers" target="_blank" style="font-size:12.5px;color:#63b3ed;text-decoration:none">Ubuntu Docs: RootSudo & Sudoers</a>
+      </div>
     </div>
     <div>
       <div class="card" style="padding:14px;background:rgba(237,137,54,0.1);border:1px solid #ed8936;margin-top:20px">
         <h4 style="color:#ed8936;margin-bottom:8px">👀 Senior Question:</h4>
         <p style="font-size:13.5px;color:var(--text)">"إيه اللي يمنع اليوزر إنه يعمل حاجة تانية غير اللي سمحناله بيها؟"</p>
-        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة:</strong> لأننا في الـ <strong>Rule</strong> حددنا الـ Absolute Path للأمر <code>/usr/bin/ls /root</code> فقط. لو حاول يكتب <code>sudo rm /root/file</code> السيرفر هيرفض ويطلب الباسورد (اللي هو ميعرفوش).</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة:</strong> لأننا في الـ <strong>Rule</strong> حددنا الـ Absolute Path للأمر <code>/usr/bin/ls /root</code> فقط. لو حاول يكتب <code>sudo rm /root/file</code> السيرفر هيرفض ويطلب الباسورد (اللي هو ميعرفوش). الـ Kernel بيطابق الـ Path حرفياً بناءً على ما ورد في <code>man sudoers</code>.</p>
       </div>
     </div>
   </div>
@@ -1257,15 +1266,19 @@ app.get(<span class="cv">'/metrics'</span>, <span class="cf">async</span> (req, 
       <p>بدل التثبيت اليدوي، الـ <strong>Docker Compose</strong> بيخلينا نبني الـ <strong>Stack</strong> كله بملف واحد.</p>
       <ul class="dlist" style="font-size:14px">
         <li><span class="li">🐧</span><span><strong style="color:var(--text)">L (Linux):</strong> الـ Docker بيعمل <strong>Isolation</strong> جوا بيئة لينكس.</span></li>
-        <li><span class="li">🌐</span><span><strong style="color:var(--text)">A & P (Apache & PHP):</strong> الـ <strong>Official Image</strong> الخاصة بـ <code>wordpress:latest</code> مبنية بالفعل على خادم Apache ومدمج معها PHP.</span></li>
-        <li><span class="li">🐬</span><span><strong style="color:var(--text)">M (MySQL):</strong> هنفصل الـ Database في حاوية (Container) مخصصة باستخدام صورة <code>mysql:8.0</code> كـ <strong>Best Practice</strong> في الـ Microservices.</span></li>
+        <li><span class="li">🌐</span><span><strong style="color:var(--text)">A & P (Apache & PHP):</strong> الـ <strong>Official Image</strong> الخاصة بـ <code>wordpress:latest</code> مبنية بالفعل على خادم Apache ومدمج معها PHP بشكل تلقائي.</span></li>
+        <li><span class="li">🐬</span><span><strong style="color:var(--text)">M (MySQL):</strong> هنفصل الـ Database في حاوية (Container) مخصصة باستخدام صورة <code>mysql:8.0</code> كـ <strong>Best Practice</strong>.</span></li>
       </ul>
+      <div style="margin-top:15px;padding:10px;background:rgba(255,255,255,0.05);border-left:3px solid #3182ce;border-radius:4px;">
+        <span style="font-size:12px;color:var(--mut)">📚 <strong>Official Source:</strong></span><br>
+        <a href="https://hub.docker.com/_/wordpress" target="_blank" style="font-size:13px;color:#63b3ed;text-decoration:none">Docker Hub: Official WordPress Image Docs</a>
+      </div>
     </div>
     <div>
       <div class="card" style="padding:14px;background:rgba(49,130,206,0.1);border:1px solid #3182ce;margin-top:10px">
         <h4 style="color:#63b3ed;margin-bottom:8px">👀 Senior Question:</h4>
-        <p style="font-size:13.5px;color:var(--text)">"ليه حطينا MySQL في Container لوحده؟"</p>
-        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة:</strong> لأن من مبادئ الـ <strong>Containerization</strong> إن كل حاوية يكون فيها <strong>Single Process</strong>. لو فصلناهم نقدر نعمل <strong>Scaling</strong> للـ WordPress لوحده بدون التأثير على قاعدة البيانات، وكمان يسهل الـ <strong>Backups</strong> و الـ Maintenance.</p>
+        <p style="font-size:13.5px;color:var(--text)">"ليه حطينا MySQL في Container لوحده ومحطيناهوش مع الووردبريس؟"</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة:</strong> لأن من مبادئ الـ <strong>Containerization Architecture</strong> إن كل حاوية يكون فيها <strong>Single Process</strong>. لو فصلناهم: <br>1. نقدر نعمل <strong>Scaling</strong> لحاوية الـ Web لوحدها استجابة للضغط (Traffic). <br>2. نقدر نعمل <strong>Persistent Volumes</strong> منفصلة للداتا بيز مما يسهل عمليات الـ <strong>Backups</strong> ويمنع ضياع البيانات.</p>
       </div>
     </div>
   </div>
@@ -1330,14 +1343,18 @@ app.get(<span class="cv">'/metrics'</span>, <span class="cf">async</span> (req, 
 <span class="cc"># 3. Documentation - تعريف البورت الداخلي</span><br>
 <span class="ck">EXPOSE</span> <span class="cv">80</span>
       </div>
+      <div style="margin-top:15px;padding:10px;background:rgba(255,255,255,0.05);border-left:3px solid #48bb78;border-radius:4px;">
+        <span style="font-size:12px;color:var(--mut)">📚 <strong>Official Source:</strong></span><br>
+        <a href="https://alpinelinux.org/about/" target="_blank" style="font-size:13px;color:#63b3ed;text-decoration:none">Alpine Linux Official: Small. Simple. Secure.</a>
+      </div>
     </div>
     <div>
       <div class="card" style="padding:14px;background:rgba(72, 187, 120, 0.1);border:1px solid #48bb78;margin-top:10px">
         <h4 style="color:#68d391;margin-bottom:8px">👀 Senior Question:</h4>
-        <p style="font-size:13.5px;color:var(--text)">"إيه الميزة اللي بتديها لينا نسخة الـ <code>alpine</code>؟ وليه مش <code>ubuntu</code>؟"</p>
-        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة:</strong> الـ <strong>Alpine Linux</strong> بتتميز بحاجتين مهمين جداً في الـ Production:<br>
-        1. <strong>Image Size:</strong> مساحتها حوالي 5MB فقط، وده بيسرع الـ <strong>Builds & Deployments</strong>.<br>
-        2. <strong>Security:</strong> تقليل الـ <strong>Attack Surface</strong> بسبب صغر الحجم وعدم وجود باكيدجات غير ضرورية.</p>
+        <p style="font-size:13.5px;color:var(--text)">"إيه الميزة اللي بتديها لينا نسخة الـ <code>alpine</code> تقنياً؟ وليه مش <code>ubuntu</code>؟"</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة:</strong> الـ <strong>Alpine Linux</strong> مبنية على <code>musl libc</code> و <code>busybox</code> بدلاً من الـ <code>glibc</code> الضخمة الخاصة بأوبونتو، وهذا يعطينا ميزتين في الـ Production:<br>
+        1. <strong>Image Size:</strong> مساحتها حوالي 5MB فقط، وده بيسرع الـ <strong>Builds & Deployments</strong> ويوفر الـ Bandwidth.<br>
+        2. <strong>Security:</strong> تقليل الـ <strong>Attack Surface</strong> بسبب غياب الحزم الغير ضرورية (Minimalist Approach)، مما يجعلها الأقل عرضة للثغرات (CVEs).</p>
       </div>
     </div>
   </div>
@@ -1387,9 +1404,13 @@ app.get(<span class="cv">'/metrics'</span>, <span class="cf">async</span> (req, 
 Error response from daemon: Conflict. The container name "/lamp_mysql" is already in use... You have to remove (or rename) that container to be able to reuse that name.
       </div>
       <ul class="dlist" style="font-size:13.5px">
-        <li><span class="li">🔍</span><span><strong>تحليل المشكلة:</strong> حاوية MySQL القديمة تعلقت (Orphaned) في الخلفية بسبب فشل الحاوية الأخرى (WordPress) في العثور على بورت فارغ.</span></li>
-        <li><span class="li">🛠️</span><span><strong>الحل الفعلي:</strong> مسحنا الحاويات المعلقة بالقوة باستخدام `docker rm -f`، مما أدى لـ <strong>تحرير البورت 8080</strong> بالكامل!</span></li>
+        <li><span class="li">🔍</span><span><strong>تحليل المشكلة:</strong> حاوية MySQL القديمة تعلقت (Orphaned) في الخلفية بسبب فشل الحاوية الأخرى (WordPress) في العثور على بورت فارغ. الـ Daemon الخاص بدوكر احتفظ بالاسم والبورت في الذاكرة.</span></li>
+        <li><span class="li">🛠️</span><span><strong>الحل الفعلي:</strong> مسحنا الحاويات المعلقة بالقوة باستخدام `docker rm -f`، مما أدى لـ <strong>تحرير البورت 8080</strong> بالكامل وحل الـ Conflict.</span></li>
       </ul>
+      <div style="margin-top:15px;padding:10px;background:rgba(255,255,255,0.05);border-left:3px solid #e53e3e;border-radius:4px;">
+        <span style="font-size:12px;color:var(--mut)">📚 <strong>Official Source:</strong></span><br>
+        <a href="https://docs.docker.com/engine/reference/commandline/rm/" target="_blank" style="font-size:13px;color:#63b3ed;text-decoration:none">Docker Docs: docker rm -f (Force removal)</a>
+      </div>
     </div>
     <div>
       <h3>كيف تتصرف أمام الـ Senior؟ (The Fix)</h3>
