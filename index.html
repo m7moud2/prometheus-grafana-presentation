@@ -1433,7 +1433,117 @@ Error response from daemon: Conflict. The container name "/lamp_mysql" is alread
   </div>
 </section>
 
-<!-- ══ S32: Final ══ -->
+<!-- ══ S32: Kubernetes Architecture ══ -->
+<section class="slide" id="s32">
+  <div class="blob" style="width:400px;height:400px;background:#3182ce;top:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:#63b3ed">☸️ 6. Kubernetes (K8s) Architecture</h2>
+  <div class="sline" style="width:70px;background:#63b3ed"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>كيف يعمل Kubernetes؟ (Control Plane & Worker Nodes)</h3>
+      <p>عكس Docker اللي بيشغل حاويات على سيرفر واحد، Kubernetes بيشغل ويدير الحاويات عبر <strong>مجموعة سيرفرات (Cluster)</strong>.</p>
+      <ul class="dlist" style="font-size:13.5px">
+        <li><span class="li">🧠</span><span><strong>Control Plane (Master Node):</strong> عقل النظام. يتكون من <code>kube-apiserver</code> (الواجهة الأساسية)، و <code>etcd</code> (قاعدة بيانات تحفظ حالة النظام)، و <code>Scheduler</code> (يقرر أين تعمل الحاويات).</span></li>
+        <li><span class="li">⚙️</span><span><strong>Worker Nodes:</strong> السيرفرات التي تشغل التطبيق الفعلي. تحتوي على <code>kubelet</code> (الوكيل الذي ينفذ أوامر الـ Master) و <code>kube-proxy</code> للشبكات.</span></li>
+      </ul>
+      <div style="margin-top:15px;padding:10px;background:rgba(255,255,255,0.05);border-left:3px solid #3182ce;border-radius:4px;">
+        <span style="font-size:12px;color:var(--mut)">📚 <strong>Official Source:</strong></span><br>
+        <a href="https://kubernetes.io/docs/concepts/architecture/" target="_blank" style="font-size:13px;color:#63b3ed;text-decoration:none">Kubernetes Docs: Cluster Architecture</a>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="padding:14px;background:rgba(49,130,206,0.1);border:1px solid #3182ce;margin-top:10px">
+        <h4 style="color:#63b3ed;margin-bottom:8px">👀 Senior Question:</h4>
+        <p style="font-size:13.5px;color:var(--text)">"إيه اللي يحصل لو الـ etcd وقع؟"</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة:</strong> الـ <code>etcd</code> هو الـ Single Source of Truth في K8s. لو وقع، الـ Cluster هيفقد قدرته على تغيير حالته (لا يمكن عمل Deploy أو Scaling جديد)، لكن الـ Pods الحالية <strong>هتستمر في العمل</strong> مؤقتاً طالما الـ Worker Nodes شغالة. لذلك بنعمل له Backup باستمرار.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S33: Kubernetes Core Resources ══ -->
+<section class="slide" id="s33">
+  <div class="blob" style="width:400px;height:400px;background:#3182ce;top:-100px;left:-80px"></div>
+  <h2 class="stitle" style="color:#63b3ed">☸️ 6. Kubernetes Core Resources</h2>
+  <div class="sline" style="width:70px;background:#63b3ed"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>الموارد الأساسية (Pods, Deployments, Services)</h3>
+      <ul class="dlist" style="font-size:13px">
+        <li><span class="li">📦</span><span><strong>Pod:</strong> أصغر وحدة في K8s، وتحتوي على Container واحد أو أكثر يشتركون في نفس الـ IP.</span></li>
+        <li><span class="li">🚀</span><span><strong>Deployment:</strong> يدير الـ Pods، يضمن عمل عدد محدد (Replicas)، ويوفر ميزة <strong>Self-healing</strong> (لو Pod مات بيعمل غيره).</span></li>
+        <li><span class="li">🌐</span><span><strong>Service:</strong> توفر <strong>Static IP</strong> و Load Balancing للـ Pods لأن أرقام الـ IP الخاصة بالـ Pods تتغير دائماً.</span></li>
+      </ul>
+      <div style="margin-top:10px;padding:10px;background:rgba(255,255,255,0.05);border-left:3px solid #3182ce;border-radius:4px;">
+        <span style="font-size:12px;color:var(--mut)">📚 <strong>Official Source:</strong></span><br>
+        <a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" target="_blank" style="font-size:13px;color:#63b3ed;text-decoration:none">Kubernetes Docs: Deployments</a>
+      </div>
+    </div>
+    <div>
+      <h3>مثال عملي: Nginx Deployment YAML</h3>
+      <div class="code" style="font-size:10.5px;margin-bottom:12px">
+<span class="ck">apiVersion:</span> <span class="cv">apps/v1</span><br>
+<span class="ck">kind:</span> <span class="cv">Deployment</span><br>
+<span class="ck">metadata:</span><br>
+&nbsp;&nbsp;<span class="ck">name:</span> <span class="cv">nginx-deployment</span><br>
+<span class="ck">spec:</span><br>
+&nbsp;&nbsp;<span class="ck">replicas:</span> <span class="cv">3</span> <span class="cc"># ضمان عمل 3 نسخ دائمًا</span><br>
+&nbsp;&nbsp;<span class="ck">selector:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">matchLabels:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">app:</span> <span class="cv">nginx</span><br>
+&nbsp;&nbsp;<span class="ck">template:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">metadata:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">labels:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">app:</span> <span class="cv">nginx</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">spec:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">containers:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">name:</span> <span class="cv">nginx</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">image:</span> <span class="cv">nginx:alpine</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">ports:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="ck">containerPort:</span> <span class="cv">80</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S34: Kubernetes Troubleshooting & Interview ══ -->
+<section class="slide" id="s34">
+  <div class="blob" style="width:400px;height:400px;background:#e53e3e;top:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:#fc8181">☸️ 6. Troubleshooting & Interview</h2>
+  <div class="sline" style="width:70px;background:#fc8181"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>كيف تقوم بـ Debugging للـ Pods الميتة؟</h3>
+      <p>السيناريو الأشهر في الـ Interview هو حالة <code>CrashLoopBackOff</code> (الـ Pod يحاول العمل ثم يفشل ويكرر المحاولة).</p>
+      <div class="code" style="font-size:12px;margin-bottom:12px;background:rgba(229,62,62,0.1);border:1px solid #e53e3e;color:#feb2b2">
+<span class="cc"># 1. فحص الأحداث لمعرفة سبب الفشل من مستوى الكلاستر</span><br>
+<span class="cv">kubectl describe pod &lt;pod-name&gt;</span><br><br>
+<span class="cc"># 2. قراءة الـ Logs من داخل التطبيق نفسه</span><br>
+<span class="cv">kubectl logs &lt;pod-name&gt;</span><br><br>
+<span class="cc"># 3. الدخول إلى الـ Pod لتشخيص مشكلة في الملفات/الشبكة</span><br>
+<span class="cv">kubectl exec -it &lt;pod-name&gt; -- /bin/sh</span>
+      </div>
+      <div style="margin-top:15px;padding:10px;background:rgba(255,255,255,0.05);border-left:3px solid #e53e3e;border-radius:4px;">
+        <span style="font-size:12px;color:var(--mut)">📚 <strong>Official Source:</strong></span><br>
+        <a href="https://kubernetes.io/docs/tasks/debug/debug-application/" target="_blank" style="font-size:13px;color:#63b3ed;text-decoration:none">Kubernetes Docs: Debug Application</a>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="padding:14px;background:#1a202c;border:1px solid #fc8181;margin-top:10px">
+        <h4 style="color:#fc8181;margin-bottom:8px">👀 Senior Question:</h4>
+        <p style="font-size:13.5px;color:var(--text)">"ليه نستخدم Kubernetes أساساً وممكن نكتفي بـ Docker Compose؟"</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة المتوقعة:</strong><br>
+        الـ Docker Compose ممتاز للـ <strong>Single-host environments</strong> ولبيئة التطوير (Local Dev).<br>لكن في الـ <strong>Production</strong> للشركات الكبرى، نحتاج Kubernetes لأنه يوفر:<br>
+        1. <strong>High Availability:</strong> توزيع الحاويات عبر أكثر من سيرفر.<br>
+        2. <strong>Auto-scaling:</strong> زيادة عدد الـ Pods تلقائياً مع زيادة الضغط (HPA).<br>
+        3. <strong>Self-healing:</strong> إعادة تشغيل الـ Pods تلقائياً إذا فشلت.<br>
+        4. <strong>Zero-downtime Deployments:</strong> التحديث المستمر بدون إيقاف الخدمة (Rolling Updates).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S35: Final ══ -->
 <section class="slide" id="sfinal">
   <div class="blob" style="width:500px;height:500px;background:var(--prom);top:-180px;right:-120px"></div>
   <div class="blob" style="width:380px;height:380px;background:var(--graf);bottom:-120px;left:-80px;animation-delay:2.5s"></div>
