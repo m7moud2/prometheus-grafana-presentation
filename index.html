@@ -1543,7 +1543,96 @@ Error response from daemon: Conflict. The container name "/lamp_mysql" is alread
   </div>
 </section>
 
-<!-- ══ S35: Final ══ -->
+<!-- ══ S35: K8s Storage & Volumes ══ -->
+<section class="slide" id="s35">
+  <div class="blob" style="width:400px;height:400px;background:#ed8936;top:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:#ed8936">☸️ 6. Storage in Kubernetes</h2>
+  <div class="sline" style="width:70px;background:#ed8936"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>كيف نحافظ على البيانات عند موت الـ Pod؟</h3>
+      <p>الـ Pods بطبيعتها <strong>Ephemeral (مؤقتة)</strong>. لو الـ Pod مات، كل الداتا اللي جواه بتتمسح. عشان كده بنستخدم <strong>Persistent Volumes (PV)</strong>.</p>
+      <ul class="dlist" style="font-size:13.5px">
+        <li><span class="li">💽</span><span><strong>Persistent Volume (PV):</strong> مساحة التخزين الفعلية اللي بيوفرها الـ Admin (زي NFS أو AWS EBS).</span></li>
+        <li><span class="li">🎫</span><span><strong>Persistent Volume Claim (PVC):</strong> طلب بيعمله الـ Developer عشان ياخد مساحة من الـ PV ويربطها بالـ Pod بتاعه.</span></li>
+      </ul>
+      <div style="margin-top:15px;padding:10px;background:rgba(255,255,255,0.05);border-left:3px solid #ed8936;border-radius:4px;">
+        <span style="font-size:12px;color:var(--mut)">📚 <strong>Official Source:</strong></span><br>
+        <a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes/" target="_blank" style="font-size:13px;color:#63b3ed;text-decoration:none">Kubernetes Docs: Persistent Volumes</a>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="padding:14px;background:rgba(237,137,54,0.1);border:1px solid #ed8936;margin-top:10px">
+        <h4 style="color:#ed8936;margin-bottom:8px">👀 Senior Question:</h4>
+        <p style="font-size:13.5px;color:var(--text)">"إيه هو الـ StorageClass وليه بنستخدمه؟"</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة:</strong> الـ <code>StorageClass</code> بيسمح بعمل <strong>Dynamic Provisioning</strong>. بدل ما الـ Admin يكريت الـ PV بنفسه يدوياً (Static)، الـ StorageClass بيخلي الكلاستر يروح يكلم الكلاود (زي AWS أو GCP) ويكريت الهارد ديسك أوتوماتيك أول ما اليوزر يعمل PVC.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S36: Advanced K8s Concepts ══ -->
+<section class="slide" id="s36">
+  <div class="blob" style="width:400px;height:400px;background:#48bb78;top:-100px;left:-80px"></div>
+  <h2 class="stitle" style="color:#68d391">☸️ 6. Advanced Senior Topics</h2>
+  <div class="sline" style="width:70px;background:#68d391"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>كيف تتعامل مع الـ Traffic والـ Scaling؟</h3>
+      <ul class="dlist" style="font-size:13px">
+        <li><span class="li">🚪</span><span><strong>Ingress:</strong> بيشتغل كـ <strong>Smart Router (Reverse Proxy)</strong> لدخول الـ Traffic للـ Cluster بناءً على الرابط (مثال: `api.example.com` يروح لـ Service معينة).</span></li>
+        <li><span class="li">📈</span><span><strong>HPA (Horizontal Pod Autoscaler):</strong> بيراقب استهلاك الـ CPU/Memory، ولما الاستهلاك يزيد، بيزود عدد الـ Pods أوتوماتيكياً للتعامل مع الضغط.</span></li>
+      </ul>
+      <div style="margin-top:10px;padding:10px;background:rgba(255,255,255,0.05);border-left:3px solid #48bb78;border-radius:4px;">
+        <span style="font-size:12px;color:var(--mut)">📚 <strong>Official Source:</strong></span><br>
+        <a href="https://kubernetes.io/docs/concepts/services-networking/ingress/" target="_blank" style="font-size:13px;color:#63b3ed;text-decoration:none">Kubernetes Docs: Ingress</a>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="padding:14px;background:#1a202c;border:1px solid #48bb78;margin-top:10px">
+        <h4 style="color:#68d391;margin-bottom:8px">👀 Senior Question:</h4>
+        <p style="font-size:13.5px;color:var(--text)">"إيه الفرق بين Rolling Update و Recreate في الـ Deployment؟"</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة المتوقعة:</strong><br>
+        - <strong>Rolling Update (الافتراضي):</strong> بيقفل Pods قديمة بالتدريج ويفتح Pods جديدة مكانها. الميزة: <strong>Zero Downtime</strong> (الموقع مش بيقع).<br>
+        - <strong>Recreate:</strong> بيقفل كل الـ Pods القديمة مرة واحدة، وبعدين يشغل الجديدة. الميزة: مفيش نسختين (قديمة وجديدة) بيشتغلوا مع بعض في نفس الوقت، بس العيب إن بيحصل <strong>Downtime</strong> للموقع.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S37: K8s CLI Cheat Sheet ══ -->
+<section class="slide" id="s37">
+  <div class="blob" style="width:400px;height:400px;background:var(--acc);top:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:var(--acc)">☸️ 6. Kubectl Cheat Sheet</h2>
+  <div class="sline" style="width:70px;background:var(--acc)"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>أوامر لا غنى عنها في الـ Interview (Kubectl)</h3>
+      <p>السينيور هيسألك: "لو قلتلك شوفلي الـ Pods اللي واقعه، هتكتب أمر إيه؟"</p>
+      <div class="code" style="font-size:11.5px;margin-bottom:12px">
+<span class="cc"># 1. عرض كل الموارد</span><br>
+<span class="cv">kubectl get pods</span> <span class="cc"># عرض الـ Pods</span><br>
+<span class="cv">kubectl get all -n my-namespace</span> <span class="cc"># عرض كل شيء في بيئة معينة</span><br><br>
+<span class="cc"># 2. فحص وتصحيح الأخطاء (Troubleshooting)</span><br>
+<span class="cv">kubectl describe pod nginx-pod</span> <span class="cc"># تفاصيل الـ Pod والأحداث</span><br>
+<span class="cv">kubectl logs nginx-pod</span> <span class="cc"># قراءة الـ Logs</span><br><br>
+<span class="cc"># 3. تشغيل كود YAML</span><br>
+<span class="cv">kubectl apply -f deployment.yaml</span>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="padding:14px;background:rgba(255,100,100,0.1);border:1px solid #fc8181;margin-top:10px">
+        <h4 style="color:#fc8181;margin-bottom:8px">👀 Senior Question:</h4>
+        <p style="font-size:13.5px;color:var(--text)">"إزاي تدخل تنفذ أمر جوه Pod شغال فعلياً؟"</p>
+        <p style="font-size:12.5px;color:var(--mut)"><strong>الإجابة:</strong> باستخدم أمر <code>exec</code> كالتالي:<br>
+        <code>kubectl exec -it &lt;pod-name&gt; -- /bin/bash</code><br>
+        وده بيشبه أمر <code>docker exec</code> وبيسمحلي أدخل جوه الـ Container لأعمل Debugging للشبكة أو أقرأ الملفات الحية.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S38: Final ══ -->
 <section class="slide" id="sfinal">
   <div class="blob" style="width:500px;height:500px;background:var(--prom);top:-180px;right:-120px"></div>
   <div class="blob" style="width:380px;height:380px;background:var(--graf);bottom:-120px;left:-80px;animation-delay:2.5s"></div>
