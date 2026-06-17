@@ -280,124 +280,171 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
          • تتواصل مع الـ Control Plane</p>
     </div>
   </div>
-  <div class="snote">
-    <div class="st">⚠️ تنبيه هام</div>
-    <div class="bilang">
-      <div class="ar"><span class="arlabel">🇪🇬 ملاحظة</span>لا تعمل تطبيقات المستخدم أبداً على الـ Control Plane، بل يتم توجيهها لتعمل على الـ Worker Nodes لضمان استقرار النظام.</div>
+</section>
+
+<!-- ══ S3: ARCHITECTURE MAP (ROADMAP) ══ -->
+<section class="slide" id="s3">
+  <div class="blob" style="width:400px;height:400px;background:#9f7aea;top:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:#b794f4">🗺️ الخريطة التوضيحية لعمل Kubernetes</h2>
+  <div class="sline" style="width:70px;background:#b794f4"></div>
+  <div class="arch" style="margin-bottom:16px">
+    <div class="anode" style="border-color:#63b3ed">
+      <div class="ani">👨‍💻</div>
+      <h4>أنت (User)</h4>
+      <p>تستخدم kubectl أو UI</p>
     </div>
+    <div class="aconn"><div class="arr">←</div><div class="lbl">YAML / Commands</div></div>
+    
+    <div class="anode" style="border-color:#326ce5">
+      <div class="ani">🧠</div>
+      <h4>Control Plane</h4>
+      <p>API Server | etcd<br>Scheduler | Controllers</p>
+    </div>
+    <div class="aconn"><div class="arr">←</div><div class="lbl">Assign / Sync</div></div>
+    
+    <div class="anode" style="border-color:#68d391">
+      <div class="ani">⚙️</div>
+      <h4>Worker Node</h4>
+      <p>Kubelet | Kube-Proxy</p>
+      <span class="port">يشغل الحاويات في Pods</span>
+    </div>
+  </div>
+  <div class="card" style="max-width:900px;width:100%;padding:18px;margin-top:10px;">
+    <h3 style="color:#b794f4;font-size:15px;margin-bottom:10px">🔄 قصة حياة أي طلب في Kubernetes:</h3>
+    <ul class="dlist">
+      <li><span class="li">1️⃣</span><span><strong>أنت تطلب:</strong> `kubectl apply -f pod.yaml` — الطلب يذهب مباشرة إلى الـ <strong>API Server</strong>.</span></li>
+      <li><span class="li">2️⃣</span><span><strong>الحفظ:</strong> الـ API Server يراجع الصلاحيات ويحفظ هذا الطلب في الـ <strong>etcd</strong> (ذاكرة العنقود).</span></li>
+      <li><span class="li">3️⃣</span><span><strong>التوزيع:</strong> الـ <strong>Scheduler</strong> يلاحظ وجود Pod جديد بلا عنوان، فيبحث عن أفضل <strong>Node</strong> ليضع الـ Pod فيها.</span></li>
+      <li><span class="li">4️⃣</span><span><strong>التنفيذ:</strong> الـ <strong>Kubelet</strong> الموجود على الـ Node يقرأ الأوامر من الـ API Server ويطلب من <strong>Docker</strong> تشغيل الحاوية!</span></li>
+    </ul>
   </div>
 </section>
 
-<!-- ══ S3: Control Plane ══ -->
-<section class="slide" id="s3">
+<!-- ══ S4: Control Plane Details ══ -->
+<section class="slide" id="s4">
   <div class="blob" style="width:400px;height:400px;background:var(--acc2);top:-100px;right:-80px"></div>
-  <h2 class="stitle">🧠 مكونات الـ Control Plane</h2>
+  <h2 class="stitle">🧠 تفصيل مكونات الـ Control Plane</h2>
   <div class="sline" style="width:70px;background:var(--acc2)"></div>
   <div class="g4" style="margin-bottom:14px">
     <div class="mtype">
       <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--acc)"></div>
       <h4 style="color:var(--acc)">Kube-API Server 🚪</h4>
-      <p>واجهة التخاطب الأساسية مع K8s. أي أمر تكتبه (مثل kubectl) يمر عبره أولاً.</p>
+      <p>البوابة الرئيسية. أي شيء في K8s (حتى المكونات الداخلية) يجب أن تتحدث معه. لا يوجد تواصل مباشر بين المكونات الأخرى.</p>
     </div>
     <div class="mtype">
       <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--grn)"></div>
       <h4 style="color:var(--grn)">etcd 🗄️</h4>
-      <p>قاعدة البيانات عالية الموثوقية التي تخزن كل ما يخص الـ Cluster وحالته.</p>
+      <p>قاعدة بيانات (Key-Value) عالية الموثوقية تخزن الـ State الخاصة بالـ Cluster. بدونها Kubernetes يفقد الذاكرة بالكامل.</p>
     </div>
     <div class="mtype">
       <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--graf2)"></div>
       <h4 style="color:var(--graf2)">Kube-Scheduler 📅</h4>
-      <p>المكون المسؤول عن اختيار الـ Node المناسبة لتشغيل الـ Pod الجديد بناءً على الموارد.</p>
+      <p>يقرر "أين" ستعمل الـ Pods بناءً على الموارد المتاحة (CPU/RAM) وقواعد التوزيع (Affinities).</p>
     </div>
     <div class="mtype">
       <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--acc2)"></div>
       <h4 style="color:var(--acc2)">Controller-Manager 👮</h4>
-      <p>يراقب النظام باستمرار لضمان أن الحالة الحالية تطابق الحالة المطلوبة (Desired State).</p>
+      <p>يراقب باستمرار لضمان أن الحالة الحالية (Current State) تطابق المطلوبة (Desired). مثلاً إذا وقع Pod يقوم بإنشاء غيره فوراً.</p>
     </div>
   </div>
 </section>
 
-<!-- ══ S4: Worker Node ══ -->
-<section class="slide" id="s4">
+<!-- ══ S5: Worker Node Details ══ -->
+<section class="slide" id="s5">
   <div class="blob" style="width:400px;height:400px;background:var(--grn);bottom:-100px;left:-80px"></div>
-  <h2 class="stitle" style="color:var(--grn)">⚙️ مكونات الـ Worker Node</h2>
+  <h2 class="stitle" style="color:var(--grn)">⚙️ تفصيل مكونات الـ Worker Node</h2>
   <div class="sline" style="width:70px;background:var(--grn)"></div>
   <div class="g3" style="margin-bottom:14px">
     <div class="exp-card">
       <div class="tb" style="background:var(--prom2)"></div>
       <h4 style="color:var(--prom2)">Kubelet 🤖</h4>
-      <p>الوكيل (Agent) الذي يعمل على كل Node ويتأكد من تشغيل الحاويات كما هو مطلوب من قبل الـ Control Plane.</p>
+      <p>الوكيل (Agent) الذي يتحدث مع الـ API Server. يأخذ أوامر "شغّل هذا الـ Pod" ويقوم بالتنفيذ، ويرسل تقرير مستمر عن صحة الحاويات.</p>
     </div>
     <div class="exp-card">
       <div class="tb" style="background:#4299e1"></div>
       <h4 style="color:#4299e1">Kube-Proxy 🔀</h4>
-      <p>يدير قواعد الشبكة (Network Rules) للسماح بالاتصال بين التطبيقات داخل وخارج الـ Cluster.</p>
+      <p>يدير قواعد الشبكة (Network Rules) والتوجيه. هو المسؤول عن جعل الـ Services قادرة على توزيع المرور (Load Balancing) بين الـ Pods.</p>
     </div>
     <div class="exp-card">
       <div class="tb" style="background:var(--acc2)"></div>
       <h4 style="color:var(--acc2)">Container Runtime 🐳</h4>
-      <p>البرنامج الذي يقوم بتشغيل الحاويات فعلياً (مثل Docker أو containerd).</p>
+      <p>البرنامج الذي يقوم بتشغيل الحاويات فعلياً (مثل containerd أو Docker أو CRI-O).</p>
     </div>
   </div>
   <div class="card" style="max-width:880px;width:100%;padding:18px;margin:0 auto;">
     <div class="tb" style="background:var(--yel)"></div>
-    <h3 style="color:var(--yel);font-size:15px;margin-bottom:10px">📦 ما هو الـ Pod؟</h3>
-    <p style="font-size:13px;color:var(--mut)">أصغر وحدة قابلة للنشر في Kubernetes. يمكن أن يحتوي على حاوية واحدة أو أكثر تعمل معاً ككيان واحد وتتشارك نفس موارد الشبكة والمساحة.</p>
+    <h3 style="color:var(--yel);font-size:15px;margin-bottom:10px">📦 ما هو الـ Pod في Kubernetes Documentation؟</h3>
+    <p style="font-size:13px;color:var(--mut)">بحسب توثيق K8s الرسمي، الـ Pod هو "أصغر وحدة حوسبة قابلة للنشر". الـ Pod مثل "غلاف طماطم" يضم بداخله حاوية واحدة أو أكثر يتشاركون نفس الـ Storage والـ Network (كلهم يتحدثون بـ localhost).</p>
   </div>
 </section>
 
-<!-- ══ S5: Minikube ══ -->
-<section class="slide" id="s5">
+<!-- ══ S6: Minikube ══ -->
+<section class="slide" id="s6">
   <div class="blob" style="width:400px;height:400px;background:#f5a623;top:-100px;right:-80px"></div>
-  <h2 class="stitle" style="color:#f5a623">🚀 ما هو Minikube ولماذا نستخدمه؟</h2>
+  <h2 class="stitle" style="color:#f5a623">🚀 ما هو Minikube؟</h2>
   <div class="sline" style="width:70px;background:#f5a623"></div>
   <div class="dlay">
     <div class="dleft">
       <h3>بيئة Kubernetes المحلية</h3>
-      <p>تشغيل K8s كامل يحتاج إلى موارد ضخمة وسيرفرات معقدة. Minikube يوفر لك Cluster مبسط على جهازك.</p>
+      <p>يجمع Minikube كل المكونات السابقة (Control Plane + Worker Node) ويضعها معاً في جهاز افتراضي واحد أو حاوية Docker واحدة.</p>
       <ul class="dlist">
-        <li><span class="li">💻</span><span>يعمل محلياً على جهازك الشخصي</span></li>
-        <li><span class="li">📦</span><span>يحتوي على Control Plane و Worker Node في بيئة واحدة</span></li>
-        <li><span class="li">🧪</span><span>مثالي للتدريب وتطوير واختبار التطبيقات قبل النشر</span></li>
-        <li><span class="li">⚡</span><span>خفيف الاستهلاك مقارنة بعنقود K8s حقيقي</span></li>
+        <li><span class="li">💻</span><span>ممتاز للتعلم السريع والتجربة دون تكلفة.</span></li>
+        <li><span class="li">⚙️</span><span>يتيح لك استخدام أمر `kubectl` كأنك تدير Production.</span></li>
       </ul>
     </div>
-    <div class="card" style="padding:20px">
-      <div class="tb" style="background:var(--acc)"></div>
-      <h3 style="color:var(--acc);margin-bottom:14px;font-size:14px">💡 كيف يعمل Minikube؟</h3>
-      <p style="font-size:13px;color:var(--text);line-height:1.8">
-        Minikube يقوم بإنشاء جهاز افتراضي (VM) أو حاوية Docker (Container) ويقوم بتثبيت وإعداد Kubernetes بداخلها (Single-Node Cluster).
-        <br><br>
-        بذلك يمكنك استخدام أوامر <code>kubectl</code> من جهازك للتحكم في هذا العنقود المصغر تماماً كما لو كان بيئة عمل حقيقية (Production).
-      </p>
+    <div class="code">
+<span class="cc"># أوامر Minikube الأساسية</span><br>
+<span class="cv">minikube start</span> <span class="cc"># لإنشاء وبدء الـ Cluster</span><br>
+<span class="cv">minikube status</span> <span class="cc"># التأكد أن الـ Control Plane يعمل</span><br>
+<span class="cv">minikube stop</span> <span class="cc"># إيقافه مؤقتاً لتوفير موارد جهازك</span><br>
+<span class="cv">minikube dashboard</span> <span class="cc"># فتح لوحة التحكم البصرية للمراقبة</span>
     </div>
   </div>
 </section>
 
-<!-- ══ S6: First Task ══ -->
-<section class="slide" id="s6">
-  <div class="blob" style="width:400px;height:400px;background:#68d391;top:-100px;left:-80px"></div>
-  <h2 class="stitle" style="color:#68d391">🎯 توقعات "أول تاسك"</h2>
-  <div class="sline" style="width:70px;background:#68d391"></div>
+<!-- ══ S7: POD TASKS ══ -->
+<section class="slide" id="s7">
+  <div class="blob" style="width:450px;height:450px;background:#fc8181;top:-130px;right:-100px"></div>
+  <h2 class="stitle" style="color:#fc8181">🎯 تاسكات الـ Pods المتوقعة والأهم</h2>
+  <div class="sline" style="width:70px;background:#fc8181"></div>
   <div class="dlay">
     <div class="dleft">
-      <h3>الخطوات العملية المتوقعة</h3>
-      <p>الهدف سيكون إعداد بيئة العمل (Minikube) وتشغيل أول تطبيق لك عليها (مثلاً موقع Nginx).</p>
-      <div class="code" style="font-size:11.5px;margin-bottom:12px">
-<span class="cc"># 1. بدء تشغيل العنقود المحلي</span><br>
-<span class="cv">minikube start</span><br><br>
-<span class="cc"># 2. إنشاء ونشر تطبيق بسيط (Deployment)</span><br>
-<span class="cv">kubectl create deployment hello-minikube --image=nginx</span><br><br>
-<span class="cc"># 3. كشف التطبيق للشبكة الخارجية (Expose)</span><br>
-<span class="cv">kubectl expose deployment hello-minikube --type=NodePort --port=80</span><br><br>
-<span class="cc"># 4. فتح التطبيق في المتصفح</span><br>
-<span class="cv">minikube service hello-minikube</span>
+      <h3>1️⃣ الإنشاء والاستعلام (Create & Get)</h3>
+      <div class="code" style="font-size:11px;margin-bottom:12px;padding:12px">
+<span class="cv">kubectl run my-nginx --image=nginx</span><br>
+<span class="cv">kubectl get pods</span> <span class="cc"># يعرض الحالة هل هي Running أم Pending</span>
+      </div>
+      
+      <h3>2️⃣ الفحص والتشخيص (Describe)</h3>
+      <p style="font-size:12px;color:var(--mut);line-height:1.5">إذا كان الـ Pod عالقاً في Pending أو CrashLoopBackOff، استخدم Describe لقراءة الـ Events (الأحداث التي يكتبها الـ Kubelet و Scheduler).</p>
+      <div class="code" style="font-size:11px;margin-bottom:12px;padding:12px">
+<span class="cv">kubectl describe pod my-nginx</span>
+      </div>
+      
+      <h3>3️⃣ قراءة السجلات (Logs)</h3>
+      <p style="font-size:12px;color:var(--mut);line-height:1.5">لرؤية الـ output الخاص بالتطبيق نفسه (مثلا أخطاء البرمجة أو 500 Errors).</p>
+      <div class="code" style="font-size:11px;margin-bottom:12px;padding:12px">
+<span class="cv">kubectl logs my-nginx</span>
       </div>
     </div>
-    <div>
-      <div class="card" style="padding:14px;background:rgba(104,211,145,0.1);border:1px solid #68d391;margin-top:10px">
-        <h4 style="color:#68d391;margin-bottom:8px">💡 نصيحة:</h4>
-        <p style="font-size:13.5px;color:var(--text)">توقع أن تواجه بعض التحديات في التثبيت لأول مرة (مثل صلاحيات الشبكة أو استهلاك الرامات)، ولكنها جزء من مرحلة التعلم الأساسية في لينكس والـ DevOps!</p>
+    
+    <div class="dleft">
+      <h3>4️⃣ الدخول إلى الحاوية الحية (Exec)</h3>
+      <p style="font-size:12px;color:var(--mut);line-height:1.5">يُطلب منك كثيراً الدخول للـ Pod لعمل Ping أو مراجعة إعدادات. هذا مثل SSH للـ Container!</p>
+      <div class="code" style="font-size:11px;margin-bottom:12px;padding:12px">
+<span class="cv">kubectl exec -it my-nginx -- /bin/bash</span>
+      </div>
+      
+      <h3>5️⃣ كشف البورت محلياً (Port Forwarding)</h3>
+      <p style="font-size:12px;color:var(--mut);line-height:1.5">لو أردت فتح الـ Pod في متصفح جهازك بسرعة دون تعقيدات الخدمات (Services).</p>
+      <div class="code" style="font-size:11px;margin-bottom:12px;padding:12px">
+<span class="cv">kubectl port-forward pod/my-nginx 8080:80</span>
+      </div>
+
+      <div class="card" style="padding:14px;background:rgba(252,129,129,0.1);border:1px solid #fc8181;margin-top:10px">
+        <h4 style="color:#fc8181;margin-bottom:8px">💡 سؤال انترفيو خطير:</h4>
+        <p style="font-size:12.5px;color:var(--mut)">"لو مسحنا الـ Pod باستخدام `kubectl delete`، هل سيرجع مرة أخرى؟"</p>
+        <p style="font-size:12.5px;color:var(--text)">الجواب: <strong>لا!</strong> الـ Pod المباشر يموت بلا رجعة. ولهذا في بيئات العمل الحقيقية لا ننشيء Pods بل ننشيء <strong>Deployments</strong> وهي بدورها تصنع وتحافظ على الـ Pods!</p>
       </div>
     </div>
   </div>
