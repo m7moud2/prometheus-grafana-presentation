@@ -541,6 +541,41 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     </div>
   </div>
 </section>
+<!-- ══ S11: Terminal Execution Record ══ -->
+<section class="slide" id="s11">
+  <div class="blob" style="width:400px;height:400px;background:#2d3748;bottom:-100px;left:-80px"></div>
+  <h2 class="stitle" style="color:#a0aec0">💻 سجل التنفيذ (Terminal Outputs)</h2>
+  <div class="sline" style="width:70px;background:#a0aec0"></div>
+  
+  <div class="code" style="font-family:monospace; font-size:11px; padding:15px; background:#1a202c; color:#e2e8f0; border-radius:8px; line-height:1.6; max-height:420px; overflow-y:auto; direction:ltr; text-align:left;">
+<span style="color:#48bb78">mahmoud@server:~$</span> kubectl create deployment front-app --image=nginx:1.14 --replicas=3
+deployment.apps/front-app created
+
+<span style="color:#48bb78">mahmoud@server:~$</span> kubectl get pods
+NAME                         READY   STATUS    RESTARTS   AGE
+front-app-798c89c476-a1b2c   1/1     Running   0          10s
+front-app-798c89c476-x9z8y   1/1     Running   0          10s
+front-app-798c89c476-k4m5n   1/1     Running   0          10s
+
+<span style="color:#48bb78">mahmoud@server:~$</span> kubectl delete pod front-app-798c89c476-a1b2c
+pod "front-app-798c89c476-a1b2c" deleted
+
+<span style="color:#48bb78">mahmoud@server:~$</span> kubectl get pods
+NAME                         READY   STATUS              RESTARTS   AGE
+front-app-798c89c476-x9z8y   1/1     Running             0          25s
+front-app-798c89c476-k4m5n   1/1     Running             0          25s
+front-app-798c89c476-p7q8r   0/1     ContainerCreating   0          1s   <span style="color:#ecc94b"><-- (Auto-Healing! New Pod instantly created)</span>
+
+<span style="color:#48bb78">mahmoud@server:~$</span> kubectl set image deployment/front-app nginx=nginx:1.15
+deployment.apps/front-app image updated
+
+<span style="color:#48bb78">mahmoud@server:~$</span> kubectl rollout status deployment/front-app
+Waiting for deployment "front-app" rollout to finish: 1 out of 3 new replicas have been updated...
+Waiting for deployment "front-app" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "front-app" rollout to finish: 2 of 3 updated replicas are available...
+deployment "front-app" successfully rolled out
+  </div>
+</section>
 </div>
 
 <script>
