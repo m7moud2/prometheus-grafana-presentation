@@ -449,6 +449,98 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     </div>
   </div>
 </section>
+
+<!-- ══ S8: Pods vs ReplicaSet vs Deployment ══ -->
+<section class="slide" id="s8">
+  <div class="blob" style="width:400px;height:400px;background:#805ad5;top:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:#b794f4">🚀 التسلسل الهرمي: Pod ➔ ReplicaSet ➔ Deployment</h2>
+  <div class="sline" style="width:70px;background:#b794f4"></div>
+  <div class="arch" style="margin-bottom:16px">
+    <div class="anode" style="border-color:#b794f4">
+      <div class="ani">📦</div>
+      <h4>Deployment</h4>
+      <p>يدير التحديثات (Rolling Updates)<br>ويتحكم في الـ ReplicaSet</p>
+    </div>
+    <div class="aconn"><div class="arr">↓</div><div class="lbl">Creates</div></div>
+    
+    <div class="anode" style="border-color:#63b3ed">
+      <div class="ani">👯</div>
+      <h4>ReplicaSet</h4>
+      <p>يضمن وجود عدد معين (Replicas)<br>من الـ Pods طوال الوقت</p>
+    </div>
+    <div class="aconn"><div class="arr">↓</div><div class="lbl">Manages</div></div>
+    
+    <div class="anode" style="border-color:#68d391">
+      <div class="ani">🍅</div>
+      <h4>Pods (x3)</h4>
+      <p>الحاويات الفعلية التي<br>تعمل وتستقبل الطلبات</p>
+    </div>
+  </div>
+  <div class="card" style="max-width:900px;width:100%;padding:18px;margin-top:10px;">
+    <h3 style="color:#b794f4;font-size:15px;margin-bottom:10px">💡 الفكرة باختصار:</h3>
+    <p style="font-size:13.5px;color:var(--text);line-height:1.8">نحن لا ننشئ <strong>Pods</strong> أو <strong>ReplicaSets</strong> يدوياً في بيئة العمل! نحن ننشئ <strong>Deployment</strong> فقط، وهو يقوم بإنشاء الـ ReplicaSet الذي بدوره ينشئ الـ Pods ويحميها. إذا قمت بحذف Pod، سيقوم الـ ReplicaSet بتخليق واحد جديد فوراً لتعويض النقص!</p>
+  </div>
+</section>
+
+<!-- ══ S9: The Practical Task ══ -->
+<section class="slide" id="s9">
+  <div class="blob" style="width:450px;height:450px;background:#ed8936;top:-130px;left:-100px"></div>
+  <h2 class="stitle" style="color:#ed8936">🛠️ التاسك العملي (Rolling Update & Auto-Healing)</h2>
+  <div class="sline" style="width:70px;background:#ed8936"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>1️⃣ إنشاء Deployment مع 3 نسخ</h3>
+      <div class="code" style="font-size:11px;margin-bottom:12px;padding:12px">
+<span class="cc"># الأمر ينشئ Deployment و ReplicaSet و 3 Pods مرة واحدة</span><br>
+<span class="cv">kubectl create deployment front-app --image=nginx:1.14 --replicas=3</span>
+      </div>
+      
+      <h3>2️⃣ رؤية التسلسل وتجربة حذف Pod (Auto-Healing)</h3>
+      <div class="code" style="font-size:11px;margin-bottom:12px;padding:12px">
+<span class="cv">kubectl get all</span> <span class="cc"># ستلاحظ الـ deploy و rs و pods</span><br>
+<span class="cv">kubectl delete pod front-app-xxxxx</span> <span class="cc"># امسح أي Pod</span><br>
+<span class="cv">kubectl get pods</span> <span class="cc"># ستجده أنشأ واحداً جديداً في ثانية! (Age: 1s)</span>
+      </div>
+    </div>
+    
+    <div class="dleft">
+      <h3>3️⃣ تحديث التطبيق (Rolling Update)</h3>
+      <p style="font-size:12px;color:var(--mut);line-height:1.5">الآن نريد ترقية إصدار التطبيق (من 1.14 إلى 1.15) بدون أن يقع الموقع ثانية واحدة (Zero-Downtime).</p>
+      <div class="code" style="font-size:11px;margin-bottom:12px;padding:12px">
+<span class="cv">kubectl set image deployment/front-app nginx=nginx:1.15</span>
+      </div>
+      
+      <h3>4️⃣ مراقبة التحديث لحظة بلحظة</h3>
+      <div class="code" style="font-size:11px;margin-bottom:12px;padding:12px">
+<span class="cv">kubectl rollout status deployment/front-app</span><br>
+<span class="cc"># سترى K8s يقفل Pod قديم ويفتح Pod جديد بالتدريج!</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S10: Senior Interview ══ -->
+<section class="slide" id="s10">
+  <div class="blob" style="width:400px;height:400px;background:#e53e3e;bottom:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:#fc8181">👨‍💻 نقاش السينيور (Senior Interview)</h2>
+  <div class="sline" style="width:70px;background:#fc8181"></div>
+  
+  <div class="g2" style="margin-bottom:14px; align-items: stretch;">
+    <div class="card" style="padding:20px; background:rgba(252,129,129,0.05); border-color:rgba(252,129,129,0.3)">
+      <h3 style="color:#fc8181;margin-bottom:10px;font-size:15px">🤔 سؤال 1: ليه معملناش الـ Pods دي بنفسنا؟</h3>
+      <p style="font-size:13px;color:var(--text);line-height:1.8">
+      <strong>الإجابة:</strong> لأن الـ Pods غير قابلة للشفاء الذاتي (Mortal). لو النود (Node) وقعت، الـ Pod هيموت للأسف ولن يعود. لكن الـ <strong>Deployment</strong> يملك <strong>Controller</strong> يراقب الـ State دائمًا عبر <strong>etcd</strong>. لو فقدنا Pod بسبب عطل، الـ ReplicaSet سيطلب إنشاء Pod جديد فوراً في Node آخر ليحافظ على العدد المطلوب (Desired State: 3 Replicas).
+      </p>
+    </div>
+    
+    <div class="card" style="padding:20px; background:rgba(99,179,237,0.05); border-color:rgba(99,179,237,0.3)">
+      <h3 style="color:#63b3ed;margin-bottom:10px;font-size:15px">🤔 سؤال 2: إزاي الـ Rolling Update بيحصل بدون Downtime؟</h3>
+      <p style="font-size:13px;color:var(--text);line-height:1.8">
+      <strong>الإجابة:</strong> عندما نغير الصورة (Image)، الـ Deployment يقوم بإنشاء <strong>ReplicaSet جديد</strong> للإصدار 1.15. ثم يبدأ بإضافة Pod للنسخة الجديدة، وعندما يعمل وتكون الـ Readiness Probe سليمة، يقوم بحذف Pod من النسخة القديمة بالتدرج. يستمر هكذا (1 up, 1 down) حتى يكتمل التحديث بدون أن يشعر المستخدم بأي توقف.
+      </p>
+    </div>
+  </div>
+</section>
 </div>
 
 <script>
