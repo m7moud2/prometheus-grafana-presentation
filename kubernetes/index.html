@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Kubernetes & Minikube — شرح موسّع</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--s1:#0f1623;--s2:#151e2e;--s3:#1c2840;
+  --border:rgba(99,179,237,.13);
+  --prom:#e6522c;--prom2:#ff7c52;
+  --graf:#f5a623;--graf2:#ffc94a;
+  --acc:#63b3ed;--acc2:#9f7aea;--acc3:#68d391;
+  --red:#fc8181;--yel:#f6e05e;--grn:#68d391;
+  --text:#e2e8f0;--mut:#718096;--mut2:#4a5568;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Cairo',sans-serif;color:var(--text)}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 20%,rgba(230,82,44,.04) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(245,166,35,.04) 0%,transparent 50%);pointer-events:none;z-index:0}
+
+/* ── PROGRESS ── */
+#prog{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--prom),var(--acc),var(--graf));width:0%;transition:width .4s ease;z-index:300}
+
+/* ── NAV ── */
+.nav-btn{position:fixed;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);width:44px;height:44px;border-radius:50%;font-size:22px;cursor:pointer;z-index:300;transition:all .3s;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.nav-btn:hover{background:rgba(99,179,237,.15);border-color:var(--acc)}
+#btn-prev{right:16px}#btn-next{left:16px}
+
+/* ── DOTS ── */
+#dots{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:300;flex-wrap:wrap;justify-content:center;max-width:90vw}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--mut2);transition:all .3s;cursor:pointer;flex-shrink:0}
+.dot.active{background:var(--acc);width:20px;border-radius:3px}
+
+/* ── SLIDE NUM BADGE ── */
+#slide-badge{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:rgba(15,22,35,.8);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:11px;color:var(--mut);font-family:'JetBrains Mono',monospace;letter-spacing:1px;z-index:300;backdrop-filter:blur(8px)}
+
+/* ── KB ── */
+#kb{position:fixed;bottom:36px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--mut2);font-family:'JetBrains Mono',monospace;letter-spacing:1px;z-index:200}
+
+/* ── QUIZ BUTTON ── */
+#quiz-btn{position:fixed;top:16px;right:16px;background:linear-gradient(135deg,var(--prom),var(--graf));color:#fff;font-weight:700;font-size:13px;border:none;border-radius:10px;padding:8px 18px;cursor:pointer;z-index:300;transition:all .3s;font-family:'Cairo',sans-serif}
+#quiz-btn:hover{transform:scale(1.05);box-shadow:0 4px 20px rgba(230,82,44,.3)}
+
+/* ── SLIDES ── */
+#wrap{width:100%;height:100%;position:relative;overflow:hidden;z-index:1}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:52px 72px 56px;opacity:0;transform:translateX(-60px);transition:opacity .5s ease,transform .5s ease;pointer-events:none;overflow-y:auto;overflow-x:hidden}
+.slide.active{opacity:1;transform:translateX(0);pointer-events:all}
+.slide.exit{opacity:0;transform:translateX(60px)}
+
+/* ── BLOBS ── */
+.blob{position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;animation:bpulse 6s ease-in-out infinite}
+@keyframes bpulse{0%,100%{opacity:.08}50%{opacity:.14}}
+
+/* ── HEADERS ── */
+.stitle{font-size:clamp(20px,3vw,38px);font-weight:900;text-align:center;margin-bottom:6px;line-height:1.2}
+.sline{height:3px;border-radius:2px;margin:0 auto 26px}
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(99,179,237,.08);border:1px solid rgba(99,179,237,.25);border-radius:100px;padding:6px 18px;font-size:12px;color:var(--acc);margin-bottom:24px;letter-spacing:1px}
+
+/* ── COVER ── */
+#s1{text-align:center}
+#s1 h1{font-size:clamp(34px,6vw,70px);font-weight:900;line-height:1.1;margin-bottom:16px}
+#s1 .sub{font-size:clamp(14px,2vw,19px);color:var(--mut);max-width:560px;margin:0 auto 36px;font-weight:300;line-height:1.85}
+.tags{display:flex;flex-wrap:wrap;gap:9px;justify-content:center}
+.tag{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--mut)}
+
+/* ── GRIDS ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;max-width:880px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;width:100%;max-width:940px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;width:100%;max-width:960px}
+
+/* ── CARD ── */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:24px;position:relative;overflow:hidden;transition:transform .3s,box-shadow .3s}
+.card:hover{transform:translateY(-3px)}
+.card .tb{position:absolute;top:0;left:0;right:0;height:2px}
+.card .ico{font-size:34px;margin-bottom:12px;display:block}
+.card h3{font-size:17px;font-weight:700;margin-bottom:9px}
+.card p{font-size:13.5px;color:var(--mut);line-height:1.85}
+
+/* ── CODE ── */
+.code{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px 20px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;width:100%;max-width:880px;overflow-x:auto}
+.ck{color:var(--graf2)}.cv{color:var(--grn)}.cc{color:var(--mut)}.cf{color:var(--acc2)}.cs{color:var(--acc)}.cn{color:var(--prom2)}
+
+/* ── FLOW ── */
+.flow{display:flex;align-items:center;width:100%;max-width:960px;margin-bottom:24px;gap:0}
+.fb{background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:18px 14px;text-align:center;flex:1;transition:transform .3s}
+.fb:hover{transform:translateY(-3px)}
+.fb .fi{font-size:28px;margin-bottom:7px}
+.fb h4{font-size:13px;font-weight:700;margin-bottom:3px}
+.fb p{font-size:11px;color:var(--mut);line-height:1.6}
+.farr{font-size:22px;color:var(--acc);padding:0 5px;flex-shrink:0}
+
+/* ── DETAIL LAYOUT ── */
+.dlay{display:grid;grid-template-columns:1fr 1fr;gap:32px;width:100%;max-width:940px;align-items:start}
+.dleft p{font-size:14px;color:var(--mut);line-height:1.9;margin-bottom:14px}
+.dleft h3{font-size:21px;font-weight:800;margin-bottom:11px}
+.dlist{list-style:none}
+.dlist li{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;padding:9px 0;border-bottom:1px solid var(--border);color:var(--mut);line-height:1.7}
+.dlist li:last-child{border-bottom:none}
+.dlist li .li{font-size:15px;flex-shrink:0;margin-top:1px}
+
+/* ── TABLE ── */
+.tbl-wrap{width:100%;max-width:900px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl{width:100%;border-collapse:collapse;min-width:560px}
+.tbl th{background:var(--s2);padding:11px 16px;font-size:12.5px;font-weight:700;color:var(--text);text-align:right;border-bottom:2px solid var(--border)}
+.tbl td{padding:10px 16px;font-size:12.5px;color:var(--mut);border-bottom:1px solid var(--border);line-height:1.7}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.02)}
+.yes{color:var(--grn);font-weight:700}.no{color:var(--red);font-weight:700}.warn{color:var(--yel);font-weight:700}
+
+/* ── METRIC TYPE ── */
+.mtype{background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:18px;position:relative;overflow:hidden;transition:all .3s}
+.mtype:hover{transform:translateY(-3px)}
+.mtype::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.mtype h4{font-size:14px;font-weight:700;margin-bottom:7px}
+.mtype p{font-size:12.5px;color:var(--mut);margin-bottom:9px;line-height:1.7}
+.mtype .ex{font-size:10.5px;font-family:'JetBrains Mono',monospace;color:var(--acc);background:var(--s2);padding:4px 10px;border-radius:6px;display:inline-block}
+
+/* ── GOLDEN SIGNALS ── */
+.gsig{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:20px;transition:all .3s;position:relative;overflow:hidden}
+.gsig:hover{transform:translateY(-3px)}
+.gsig::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.gsig .gnum{position:absolute;top:12px;left:14px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--mut);letter-spacing:2px}
+.gsig .gico{font-size:30px;margin-bottom:8px;display:block}
+.gsig h4{font-size:15px;font-weight:800;margin-bottom:7px}
+.gsig p{font-size:12.5px;color:var(--mut);line-height:1.75;margin-bottom:10px}
+.gsig .gq{font-size:11.5px;background:var(--s2);border-radius:7px;padding:7px 11px;color:var(--acc);border-right:2px solid var(--acc);line-height:1.5}
+.gsig .gc{font-size:10.5px;font-family:'JetBrains Mono',monospace;color:var(--grn);margin-top:9px;background:rgba(104,211,145,.05);padding:6px 10px;border-radius:6px}
+
+/* ── PROMQL ROW ── */
+.prow{display:flex;align-items:flex-start;gap:16px;padding:12px 0;border-bottom:1px solid var(--border)}
+.prow:last-child{border-bottom:none}
+.prow .pq{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--acc);background:var(--s2);padding:5px 12px;border-radius:7px;white-space:nowrap;flex-shrink:0}
+.prow .pd{font-size:13px;color:var(--mut);line-height:1.7}
+
+/* ── NOTE ── */
+.snote{background:rgba(159,122,234,.07);border:1px solid rgba(159,122,234,.2);border-radius:11px;padding:13px 18px;width:100%;max-width:880px;margin-top:14px}
+.snote .st{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--acc2);letter-spacing:1px;margin-bottom:10px}
+.bilang{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.bilang .ar{font-size:13px;color:var(--mut);line-height:1.8;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;border-right:2px solid var(--acc2)}
+.bilang .en{font-size:13px;color:var(--mut);line-height:1.8;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;border-left:2px solid var(--acc);direction:ltr;text-align:left;font-family:'JetBrains Mono',monospace;font-size:12px}
+.bilang .en .elabel{font-size:10px;color:var(--acc);letter-spacing:1px;margin-bottom:4px;display:block}
+.bilang .ar .arlabel{font-size:10px;color:var(--acc2);letter-spacing:1px;margin-bottom:4px;display:block}
+@media(max-width:768px){.bilang{grid-template-columns:1fr}}
+
+/* ── VERDICT ── */
+.verdict{background:rgba(104,211,145,.07);border:1px solid rgba(104,211,145,.2);border-radius:11px;padding:14px 18px;width:100%;max-width:880px;margin-top:12px}
+.verdict .vt{font-size:11px;color:var(--grn);letter-spacing:1px;font-weight:700;margin-bottom:5px}
+.verdict p{font-size:13.5px;color:var(--text);line-height:1.8}
+
+/* ── ALERT BOX ── */
+.abox{background:rgba(255,124,82,.07);border:1px solid rgba(255,124,82,.25);border-radius:11px;padding:16px 20px;font-size:13.5px;color:var(--text);line-height:1.8;width:100%;max-width:880px}
+.abox .ah{font-weight:700;color:var(--prom2);margin-bottom:5px;font-size:14px}
+
+/* ── EXPORTER CARD ── */
+.exp-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:20px 16px;position:relative;overflow:hidden;transition:all .3s}
+.exp-card:hover{transform:translateY(-3px)}
+.exp-card .tb{position:absolute;top:0;left:0;right:0;height:2px}
+.exp-card h4{font-size:15px;font-weight:700;margin-bottom:6px}
+.exp-card .port{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--acc);background:var(--s2);padding:3px 10px;border-radius:6px;display:inline-block;margin-bottom:8px}
+.exp-card p{font-size:12.5px;color:var(--mut);line-height:1.7}
+
+/* ── ARCH BOX ── */
+.arch{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:0;align-items:center;width:100%;max-width:900px}
+.anode{background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;transition:all .3s}
+.anode:hover{border-color:var(--acc);transform:scale(1.03)}
+.anode .ani{font-size:32px;margin-bottom:8px}
+.anode h4{font-size:13px;font-weight:700;margin-bottom:4px}
+.anode p{font-size:11px;color:var(--mut);line-height:1.6}
+.anode .port{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--acc2);margin-top:6px;display:block}
+.aconn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 8px;color:var(--acc)}
+.aconn .arr{font-size:20px}
+.aconn .lbl{font-size:10px;color:var(--mut);white-space:nowrap;font-family:'JetBrains Mono',monospace}
+
+/* ── BEST PRACTICES ── */
+.bp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:880px}
+.bp{display:flex;gap:14px;align-items:flex-start;background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px}
+.bp .bico{font-size:24px;flex-shrink:0;margin-top:2px}
+.bp h4{font-size:14px;font-weight:700;margin-bottom:5px}
+.bp p{font-size:12.5px;color:var(--mut);line-height:1.7}
+
+/* ── FINAL ── */
+#sfinal{text-align:center}
+.bigq{font-size:clamp(17px,2.6vw,30px);font-weight:700;line-height:1.7;max-width:700px;margin:0 auto 30px}
+.bigq .hl{background:linear-gradient(135deg,var(--prom2),var(--graf2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.pills{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;max-width:700px;margin:0 auto}
+.pill{background:var(--s1);border:1px solid var(--border);border-radius:100px;padding:8px 20px;font-size:13px;transition:all .3s}
+.pill:hover{border-color:var(--acc);color:var(--acc);transform:scale(1.04)}
+
+/* ══ MOBILE ══ */
+@media(max-width:768px){
+  .slide{padding:48px 14px 58px;justify-content:flex-start;align-items:stretch;overflow-y:auto;overflow-x:hidden}
+  .slide > * { max-width: 100%; }
+  #s1{justify-content:center;align-items:center}
+  .nav-btn{width:34px;height:34px;font-size:17px}
+  #btn-prev{right:6px}#btn-next{left:6px}
+  #quiz-btn{top:12px;right:12px;font-size:11px;padding:6px 12px}
+  #slide-badge{font-size:10px;padding:4px 10px}
+  .stitle{font-size:clamp(16px,5vw,24px)}
+  #s1 h1{font-size:clamp(26px,8vw,42px)}
+  #s1 .sub{font-size:13px;margin-bottom:24px}
+  .g2,.g3,.g4{grid-template-columns:1fr!important;gap:10px}
+  .dlay{grid-template-columns:1fr;gap:14px}
+  .g2 > div, .g3 > div, .g4 > div, .dlay > div { min-width: 0; }
+  .flow{flex-direction:column;gap:8px}
+  .farr{transform:rotate(90deg);padding:2px 0;font-size:18px}
+  .arch{grid-template-columns:1fr;gap:8px}
+  .aconn{display:none}
+  .tbl-wrap{border-radius:10px}
+  .tbl{font-size:11px}
+  .tbl th,.tbl td{padding:8px 10px}
+  .card,.mtype,.gsig,.exp-card,.anode,.bp{padding:14px}
+  .card h3{font-size:15px}
+  .card p,.mtype p,.gsig p,.bp p{font-size:12px}
+  .code{font-size:11px;padding:12px 14px}
+  .prow{flex-direction:column;gap:6px}
+  .prow .pq{white-space:normal;word-break:break-all}
+  .bp-grid{grid-template-columns:1fr}
+  .snote,.verdict,.abox{padding:12px 14px;font-size:12.5px;word-break:break-word;overflow-wrap:break-word}
+  .bilang .en, .bilang .ar {word-break:break-word;overflow-wrap:break-word;white-space:normal}
+  .sline{margin-bottom:16px}
+  .bigq{font-size:clamp(15px,4.5vw,22px);margin-bottom:20px}
+  .pills{gap:7px}
+  .pill{padding:7px 14px;font-size:12px}
+  #kb{display:none}
+  .dot{width:5px;height:5px}
+  .dot.active{width:14px}
+  #dots{bottom:8px}
+}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+<button class="nav-btn" id="btn-prev" onclick="go(-1)">&#8250;</button>
+<button class="nav-btn" id="btn-next" onclick="go(1)">&#8249;</button>
+<div id="slide-badge">1 / 22</div>
+<div id="dots"></div>
+<div id="kb">← → للتنقل · Space للأمام</div>
+<button id="quiz-btn" onclick="window.open('quiz.html','_blank')">📝 الكويز</button>
+<div id="wrap">
+
+
+<!-- ══ S1: COVER ══ -->
+<section class="slide active" id="s1">
+  <div class="blob" style="width:500px;height:500px;background:#326ce5;top:-180px;right:-100px"></div>
+  <div class="blob" style="width:380px;height:380px;background:#63b3ed;bottom:-120px;left:-80px;animation-delay:3s"></div>
+  <div class="badge">☸️ Container Orchestration — شرح موسّع</div>
+  <h1><span style="color:#326ce5">Kubernetes</span> <span style="color:var(--mut)">&</span> <span style="color:#63b3ed">Minikube</span></h1>
+  <p class="sub">نظام مفتوح المصدر لإدارة الحاويات وأتمتة نشر التطبيقات لضمان توفرها الدائم وتوزيع الأحمال.</p>
+  <div class="tags">
+    <span class="tag">Kubernetes</span><span class="tag">Minikube</span><span class="tag">Control Plane</span>
+    <span class="tag">Worker Nodes</span><span class="tag">Pods</span><span class="tag">Docker</span>
+  </div>
+</section>
+
+<!-- ══ S2: Architecture ══ -->
+<section class="slide" id="s2">
+  <div class="blob" style="width:400px;height:400px;background:#326ce5;top:-100px;left:-80px"></div>
+  <h2 class="stitle">🏗️ بنية Kubernetes (Architecture)</h2>
+  <div class="sline" style="width:70px;background:#326ce5"></div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="tb" style="background:#326ce5"></div>
+      <span class="ico">🧠</span>
+      <h3 style="color:#326ce5">لوحة التحكم (Control Plane)</h3>
+      <p>العقل المدبر الذي يدير النظام بالكامل. يتخذ القرارات ويراقب حالة العنقود.<br><br>
+         • يستقبل الأوامر<br>
+         • يجد الموارد المتاحة<br>
+         • يراقب استقرار النظام</p>
+    </div>
+    <div class="card">
+      <div class="tb" style="background:#63b3ed"></div>
+      <span class="ico">⚙️</span>
+      <h3 style="color:#63b3ed">العقد (Worker Nodes)</h3>
+      <p>الأجهزة (حقيقية أو افتراضية) التي تعمل عليها التطبيقات (الحاويات) فعلياً.<br><br>
+         • تشغل الحاويات<br>
+         • توفر موارد الحوسبة<br>
+         • تتواصل مع الـ Control Plane</p>
+    </div>
+  </div>
+  <div class="snote">
+    <div class="st">⚠️ تنبيه هام</div>
+    <div class="bilang">
+      <div class="ar"><span class="arlabel">🇪🇬 ملاحظة</span>لا تعمل تطبيقات المستخدم أبداً على الـ Control Plane، بل يتم توجيهها لتعمل على الـ Worker Nodes لضمان استقرار النظام.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S3: Control Plane ══ -->
+<section class="slide" id="s3">
+  <div class="blob" style="width:400px;height:400px;background:var(--acc2);top:-100px;right:-80px"></div>
+  <h2 class="stitle">🧠 مكونات الـ Control Plane</h2>
+  <div class="sline" style="width:70px;background:var(--acc2)"></div>
+  <div class="g4" style="margin-bottom:14px">
+    <div class="mtype">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--acc)"></div>
+      <h4 style="color:var(--acc)">Kube-API Server 🚪</h4>
+      <p>واجهة التخاطب الأساسية مع K8s. أي أمر تكتبه (مثل kubectl) يمر عبره أولاً.</p>
+    </div>
+    <div class="mtype">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--grn)"></div>
+      <h4 style="color:var(--grn)">etcd 🗄️</h4>
+      <p>قاعدة البيانات عالية الموثوقية التي تخزن كل ما يخص الـ Cluster وحالته.</p>
+    </div>
+    <div class="mtype">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--graf2)"></div>
+      <h4 style="color:var(--graf2)">Kube-Scheduler 📅</h4>
+      <p>المكون المسؤول عن اختيار الـ Node المناسبة لتشغيل الـ Pod الجديد بناءً على الموارد.</p>
+    </div>
+    <div class="mtype">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--acc2)"></div>
+      <h4 style="color:var(--acc2)">Controller-Manager 👮</h4>
+      <p>يراقب النظام باستمرار لضمان أن الحالة الحالية تطابق الحالة المطلوبة (Desired State).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S4: Worker Node ══ -->
+<section class="slide" id="s4">
+  <div class="blob" style="width:400px;height:400px;background:var(--grn);bottom:-100px;left:-80px"></div>
+  <h2 class="stitle" style="color:var(--grn)">⚙️ مكونات الـ Worker Node</h2>
+  <div class="sline" style="width:70px;background:var(--grn)"></div>
+  <div class="g3" style="margin-bottom:14px">
+    <div class="exp-card">
+      <div class="tb" style="background:var(--prom2)"></div>
+      <h4 style="color:var(--prom2)">Kubelet 🤖</h4>
+      <p>الوكيل (Agent) الذي يعمل على كل Node ويتأكد من تشغيل الحاويات كما هو مطلوب من قبل الـ Control Plane.</p>
+    </div>
+    <div class="exp-card">
+      <div class="tb" style="background:#4299e1"></div>
+      <h4 style="color:#4299e1">Kube-Proxy 🔀</h4>
+      <p>يدير قواعد الشبكة (Network Rules) للسماح بالاتصال بين التطبيقات داخل وخارج الـ Cluster.</p>
+    </div>
+    <div class="exp-card">
+      <div class="tb" style="background:var(--acc2)"></div>
+      <h4 style="color:var(--acc2)">Container Runtime 🐳</h4>
+      <p>البرنامج الذي يقوم بتشغيل الحاويات فعلياً (مثل Docker أو containerd).</p>
+    </div>
+  </div>
+  <div class="card" style="max-width:880px;width:100%;padding:18px;margin:0 auto;">
+    <div class="tb" style="background:var(--yel)"></div>
+    <h3 style="color:var(--yel);font-size:15px;margin-bottom:10px">📦 ما هو الـ Pod؟</h3>
+    <p style="font-size:13px;color:var(--mut)">أصغر وحدة قابلة للنشر في Kubernetes. يمكن أن يحتوي على حاوية واحدة أو أكثر تعمل معاً ككيان واحد وتتشارك نفس موارد الشبكة والمساحة.</p>
+  </div>
+</section>
+
+<!-- ══ S5: Minikube ══ -->
+<section class="slide" id="s5">
+  <div class="blob" style="width:400px;height:400px;background:#f5a623;top:-100px;right:-80px"></div>
+  <h2 class="stitle" style="color:#f5a623">🚀 ما هو Minikube ولماذا نستخدمه؟</h2>
+  <div class="sline" style="width:70px;background:#f5a623"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>بيئة Kubernetes المحلية</h3>
+      <p>تشغيل K8s كامل يحتاج إلى موارد ضخمة وسيرفرات معقدة. Minikube يوفر لك Cluster مبسط على جهازك.</p>
+      <ul class="dlist">
+        <li><span class="li">💻</span><span>يعمل محلياً على جهازك الشخصي</span></li>
+        <li><span class="li">📦</span><span>يحتوي على Control Plane و Worker Node في بيئة واحدة</span></li>
+        <li><span class="li">🧪</span><span>مثالي للتدريب وتطوير واختبار التطبيقات قبل النشر</span></li>
+        <li><span class="li">⚡</span><span>خفيف الاستهلاك مقارنة بعنقود K8s حقيقي</span></li>
+      </ul>
+    </div>
+    <div class="card" style="padding:20px">
+      <div class="tb" style="background:var(--acc)"></div>
+      <h3 style="color:var(--acc);margin-bottom:14px;font-size:14px">💡 كيف يعمل Minikube؟</h3>
+      <p style="font-size:13px;color:var(--text);line-height:1.8">
+        Minikube يقوم بإنشاء جهاز افتراضي (VM) أو حاوية Docker (Container) ويقوم بتثبيت وإعداد Kubernetes بداخلها (Single-Node Cluster).
+        <br><br>
+        بذلك يمكنك استخدام أوامر <code>kubectl</code> من جهازك للتحكم في هذا العنقود المصغر تماماً كما لو كان بيئة عمل حقيقية (Production).
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S6: First Task ══ -->
+<section class="slide" id="s6">
+  <div class="blob" style="width:400px;height:400px;background:#68d391;top:-100px;left:-80px"></div>
+  <h2 class="stitle" style="color:#68d391">🎯 توقعات "أول تاسك"</h2>
+  <div class="sline" style="width:70px;background:#68d391"></div>
+  <div class="dlay">
+    <div class="dleft">
+      <h3>الخطوات العملية المتوقعة</h3>
+      <p>الهدف سيكون إعداد بيئة العمل (Minikube) وتشغيل أول تطبيق لك عليها (مثلاً موقع Nginx).</p>
+      <div class="code" style="font-size:11.5px;margin-bottom:12px">
+<span class="cc"># 1. بدء تشغيل العنقود المحلي</span><br>
+<span class="cv">minikube start</span><br><br>
+<span class="cc"># 2. إنشاء ونشر تطبيق بسيط (Deployment)</span><br>
+<span class="cv">kubectl create deployment hello-minikube --image=nginx</span><br><br>
+<span class="cc"># 3. كشف التطبيق للشبكة الخارجية (Expose)</span><br>
+<span class="cv">kubectl expose deployment hello-minikube --type=NodePort --port=80</span><br><br>
+<span class="cc"># 4. فتح التطبيق في المتصفح</span><br>
+<span class="cv">minikube service hello-minikube</span>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="padding:14px;background:rgba(104,211,145,0.1);border:1px solid #68d391;margin-top:10px">
+        <h4 style="color:#68d391;margin-bottom:8px">💡 نصيحة:</h4>
+        <p style="font-size:13.5px;color:var(--text)">توقع أن تواجه بعض التحديات في التثبيت لأول مرة (مثل صلاحيات الشبكة أو استهلاك الرامات)، ولكنها جزء من مرحلة التعلم الأساسية في لينكس والـ DevOps!</p>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+const slides=[...document.querySelectorAll('.slide')];
+const dotsEl=document.getElementById('dots');
+const prog=document.getElementById('prog');
+const badge=document.getElementById('slide-badge');
+let cur=0;
+
+slides.forEach((_,i)=>{
+  const d=document.createElement('div');
+  d.className='dot'+(i===0?' active':'');
+  d.onclick=()=>go2(i);
+  dotsEl.appendChild(d);
+});
+
+function go2(idx){
+  if(idx<0||idx>=slides.length)return;
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('exit');
+  const old=cur;
+  setTimeout(()=>slides[old].classList.remove('exit'),600);
+  cur=idx;
+  slides[cur].classList.add('active');
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));
+  prog.style.width=((cur+1)/slides.length*100)+'%';
+  badge.textContent=(cur+1)+' / '+slides.length;
+}
+
+function go(dir){go2(cur+dir);}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key===' ')go(1);
+  if(e.key==='ArrowRight')go(-1);
+});
+
+let tx=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',e=>{
+  const d=e.changedTouches[0].clientX-tx;
+  if(Math.abs(d)>50)go(d<0?1:-1);
+},{passive:true});
+
+prog.style.width=(1/slides.length*100)+'%';
+</script>
+</body>
+</html>
